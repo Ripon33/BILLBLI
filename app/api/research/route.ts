@@ -197,13 +197,59 @@ Return ONLY valid JSON with this exact structure:
 confidence must be an integer from 0 to 100.
 `;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3.7-flash",
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json",
-      },
-    });
+  let response;
+
+  const geminiModels = [
+    "gemini-3.7-flash",
+    "gemini-3.6-flash",
+    "gemini-2.5-flash",
+  ];
+
+  let lastGeminiError: unknown;
+
+  for (const model of geminiModels) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        response = await ai.models.generateContent({
+          model,
+          contents: prompt,
+          config: {
+            responseMimeType: "application/json",
+          },
+        });
+
+        break;
+      } catch (error) {
+        lastGeminiError = error;
+
+        const message =
+          error instanceof Error ? error.message : String(error);
+
+        const retryable =
+          /503|UNAVAILABLE|high demand|429|RESOURCE_EXHAUSTED|500|502|504/i.test(
+            message
+          );
+
+        if (!retryable || attempt === 1) {
+          break;
+        }
+
+        await new Promise((resolve) =>
+          setTimeout(resolve, 800 * 2 ** attempt)
+        );
+      }
+    }
+
+    if (response) {
+      break;
+    }
+  }
+
+  if (!response) {
+    throw new Error(
+      "The AI reasoning service is temporarily unavailable."
+    );
+  }
 
     const raw = response.text || "";
 
