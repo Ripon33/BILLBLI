@@ -9,6 +9,100 @@ type TavilyResult = {
   score?: number;
 };
 
+function getSourceAuthority(url?: string) {
+  if (!url) {
+    return { score: 10, type: "unknown" };
+  }
+
+  try {
+    const hostname = new URL(url).hostname.toLowerCase();
+
+    if (
+      hostname.endsWith(".gov") ||
+      hostname.endsWith(".gov.uk") ||
+      hostname.endsWith(".gov.au") ||
+      hostname.includes(".gov.")
+    ) {
+      return { score: 98, type: "government_or_regulator" };
+    }
+
+    if (
+      hostname.endsWith(".edu") ||
+      hostname.endsWith(".ac.uk") ||
+      hostname.includes("university") ||
+      hostname.includes("edu.")
+    ) {
+      return { score: 92, type: "academic_or_research" };
+    }
+
+    if (
+      hostname.includes("who.int") ||
+      hostname.includes("oecd.org") ||
+      hostname.includes("worldbank.org") ||
+      hostname.includes("imf.org") ||
+      hostname.includes("un.org") ||
+      hostname.includes("europa.eu") ||
+      hostname.includes("ecb.europa.eu")
+    ) {
+      return { score: 96, type: "international_or_research_body" };
+    }
+
+    if (
+      hostname.includes("sec.gov") ||
+      hostname.includes("federalreserve.gov") ||
+      hostname.includes("census.gov")
+    ) {
+      return { score: 98, type: "official_data_or_regulator" };
+    }
+
+    if (
+      hostname.includes("reuters.com") ||
+      hostname.includes("apnews.com") ||
+      hostname.includes("bbc.com") ||
+      hostname.includes("ft.com") ||
+      hostname.includes("bloomberg.com") ||
+      hostname.includes("wsj.com") ||
+      hostname.includes("nytimes.com") ||
+      hostname.includes("economist.com")
+    ) {
+      return { score: 85, type: "established_news_or_business_media" };
+    }
+
+    if (
+      hostname.includes("facebook.com") ||
+      hostname.includes("instagram.com") ||
+      hostname.includes("tiktok.com") ||
+      hostname.includes("youtube.com") ||
+      hostname.includes("x.com") ||
+      hostname.includes("twitter.com") ||
+      hostname.includes("linkedin.com")
+    ) {
+      return { score: 15, type: "social_or_user_generated" };
+    }
+
+    if (
+      hostname.includes("medium.com") ||
+      hostname.includes("substack.com") ||
+      hostname.includes("wordpress.com") ||
+      hostname.includes("blogspot.com")
+    ) {
+      return { score: 30, type: "personal_or_independent_blog" };
+    }
+
+    if (
+      hostname.startsWith("docs.") ||
+      hostname.includes("developer.") ||
+      hostname.includes("research.")
+    ) {
+      return { score: 70, type: "technical_or_research_documentation" };
+    }
+
+    return { score: 50, type: "general_web_source" };
+  } catch {
+    return { score: 10, type: "invalid_or_unknown_source" };
+  }
+}
+
 async function tavilySearch(query: string, apiKey: string) {
   const response = await fetch("https://api.tavily.com/search", {
     method: "POST",
@@ -98,7 +192,12 @@ export async function POST(req: Request) {
       }
     }
 
-    const sources = Array.from(sourceMap.values()).slice(0, 20);
+    const sources = Array.from(sourceMap.values())
+    .slice(0, 20)
+    .map((source) => ({
+      ...source,
+      authority: getSourceAuthority(source.url),
+    }));
 
     if (sources.length === 0) {
       return NextResponse.json(
@@ -118,6 +217,7 @@ SOURCE ${index + 1}
 Title: ${source.title || "Untitled"}
 URL: ${source.url || ""}
 Relevance score: ${source.score ?? "unknown"}
+Authority: ${source.authority.score}/100 (${source.authority.type})
 
 Content:
 ${source.content || ""}
