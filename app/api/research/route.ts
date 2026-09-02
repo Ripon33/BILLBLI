@@ -103,6 +103,198 @@ function getSourceAuthority(url?: string) {
   }
 }
 
+
+function normalizeSourceUrl(url?: string) {
+  if (!url) return "";
+  try {
+    const parsed = new URL(url);
+    parsed.hash = "";
+    parsed.search = "";
+    return parsed.toString().replace(/\/$/, "").toLowerCase();
+  } catch {
+    return url.trim().toLowerCase();
+  }
+}
+
+function sourceRelevance(question: string, source: TavilyResult) {
+  const stopWords = new Set([
+    "the", "and", "for", "from", "with", "that", "this", "what",
+    "how", "why", "when", "where", "which", "into", "about",
+    "are", "can", "should", "would", "could", "best", "make",
+    "does", "will", "than", "their", "they", "them", "your",
+    "you", "our", "its", "use", "using", "2026", "2027"
+  ]);
+
+  const tokenize = (value: string) =>
+    value
+      .toLowerCase()
+      .replace(/https?:\/\/\S+/g, " ")
+      .replace(/[^a-z0-9\s-]/g, " ")
+      .split(/\s+/)
+      .map((word) => word.replace(/^-+|-+$/g, ""))
+      .filter((word) => word.length >= 3 && !stopWords.has(word));
+
+  const questionTerms = Array.from(
+    new Set(tokenize(question))
+  );
+
+  if (questionTerms.length === 0) return 50;
+
+  const titleTerms = new Set(tokenize(source.title || ""));
+  const contentTerms = new Set(tokenize(source.content || ""));
+
+  let titleMatches = 0;
+  let contentMatches = 0;
+
+  for (const term of questionTerms) {
+    if (titleTerms.has(term)) titleMatches++;
+    if (contentTerms.has(term)) contentMatches++;
+  }
+
+  const titleRatio = titleMatches / questionTerms.length;
+  const contentRatio = contentMatches / questionTerms.length;
+
+  // Title matches are stronger evidence of topical relevance.
+  let score = titleRatio * 70 + contentRatio * 30;
+
+  // Preserve Tavily's retrieval signal, but never let it dominate relevance.
+  const tavilyScore =
+    typeof source.score === "number"
+      ? Math.max(0, Math.min(1, source.score))
+      : 0;
+
+  score = score * 0.85 + tavilyScore * 15;
+
+  return Math.round(Math.max(0, Math.min(100, score)));
+}
+
+function sourceDirectness(source: TavilyResult) {
+  const title = (source.title || "").toLowerCase();
+  const content = (source.content || "").toLowerCase();
+
+  let score = 50;
+
+  if (title.length > 0) score += 10;
+  if (content.length > 150) score += 10;
+
+  // Prefer sources whose title directly describes evidence,
+  // rather than generic collections or promotional pages.
+  if (
+    /statistics|data|report|study|research|survey|forecast|market|analysis|official/i.test(
+      title
+    )
+  ) {
+    score += 20;
+  }
+
+  if (/top \d+|best \d+|ideas|ways to make money|side hustles/i.test(title)) {
+    score -= 15;
+  }
+
+  if (/sponsored|advertisement|affiliate/i.test(content)) {
+    score -= 20;
+  }
+
+  return Math.max(0, Math.min(100, score));
+}
+
+function rankSources(question: string, rawSources: TavilyResult[]) {
+  const unique = new Map<string, TavilyResult>();
+
+  for (const source of rawSources) {
+    const key = normalizeSourceUrl(source.url);
+
+    if (!key) continue;
+
+    const existing = unique.get(key);
+
+    if (!existing || (source.score ?? 0) > (existing.score ?? 0)) {
+      unique.set(key, source);
+    }
+  }
+
+  const ranked = Array.from(unique.values())
+    .map((source) => {
+      const authority = getSourceAuthority(source.url);
+      const relevance = sourceRelevance(question, source);
+      const directness = sourceDirectness(source);
+
+      // Relevance is deliberately the largest component.
+      const evidenceScore = Math.round(
+        relevance * 0.50 +
+        authority.score * 0.25 +
+        directness * 0.15 +
+        Math.min(100, Math.max(0, (source.score ?? 0) * 100)) * 0.10
+      );
+
+      return {
+        ...source,
+        authority,
+        relevance_score: relevance,
+        directness_score: directness,
+        evidence_score: evidenceScore,
+      };
+    })
+    // Do not allow authority alone to rescue an irrelevant source.
+    .filter(
+      (source) =>
+        source.relevance_score >= 25 ||
+        source.evidence_score >= 65
+    )
+    .sort((a, b) => {
+      if (b.evidence_score !== a.evidence_score) {
+        return b.evidence_score - a.evidence_score;
+      }
+
+      return b.authority.score - a.authority.score;
+    });
+
+  // Keep the evidence set focused and diverse.
+  // Do not allow one publisher/domain to dominate the evidence set.
+  const domainCounts = new Map<string, number>();
+  const diverse = [];
+
+  for (const source of ranked) {
+    let hostname = "";
+
+    try {
+      hostname = new URL(source.url || "").hostname
+        .replace(/^www\./, "")
+        .toLowerCase();
+    } catch {
+      hostname = "unknown";
+    }
+
+    const count = domainCounts.get(hostname) ?? 0;
+
+    // Weak discovery sources are allowed only when they provide
+    // unusually strong topical evidence.
+    const weakSource =
+      source.authority.score <= 30 ||
+      /personal|independent|social|user_generated|general_web_source/i.test(
+        source.authority.type
+      );
+
+    if (weakSource && source.evidence_score < 72) {
+      continue;
+    }
+
+    // Maximum two sources from the same domain.
+    if (count >= 2) {
+      continue;
+    }
+
+    domainCounts.set(hostname, count + 1);
+    diverse.push(source);
+
+    if (diverse.length >= 12) {
+      break;
+    }
+  }
+
+  return diverse;
+}
+
 async function tavilySearch(query: string, apiKey: string) {
   const response = await fetch("https://api.tavily.com/search", {
     method: "POST",
@@ -191,13 +383,11 @@ export async function POST(req: Request) {
         }
       }
     }
+  const sources = rankSources(
+    question,
+    Array.from(sourceMap.values())
+  );
 
-    const sources = Array.from(sourceMap.values())
-    .slice(0, 20)
-    .map((source) => ({
-      ...source,
-      authority: getSourceAuthority(source.url),
-    }));
 
     if (sources.length === 0) {
       return NextResponse.json(
@@ -323,6 +513,82 @@ confidence must be an integer from 0 to 100.
 
   let lastGeminiError: unknown;
 
+  let raw = "";
+  const openaiKey = process.env.OPENAI_API_KEY;
+
+  if (openaiKey) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 120000);
+
+      let openaiResponse: Response;
+
+      try {
+        openaiResponse = await fetch("https://api.openai.com/v1/responses", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${openaiKey}`,
+          },
+          body: JSON.stringify({
+            model: "gpt-5.6-luna",
+            reasoning: {
+              effort: "low",
+            },
+            input: prompt,
+            store: false,
+          }),
+          signal: controller.signal,
+        });
+      } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") {
+          throw new Error("OpenAI request timeout after 120 seconds");
+        }
+        throw error;
+      } finally {
+        clearTimeout(timeout);
+      }
+
+      if (!openaiResponse.ok) {
+        const errorText = await openaiResponse.text();
+        throw new Error(
+          `OpenAI HTTP ${openaiResponse.status}: ${errorText.slice(0, 500)}`
+        );
+      }
+
+      const openaiData = await openaiResponse.json();
+
+      raw =
+      openaiData.output_text ||
+      openaiData.output
+        ?.flatMap((item: any) => item.content || [])
+        ?.filter(
+          (item: any) =>
+            item.type === "output_text" ||
+            typeof item.text === "string"
+        )
+        ?.map((item: any) => item.text || "")
+        ?.join("") ||
+      "";
+
+    raw = raw.trim();
+
+    if (raw.startsWith("```")) {
+      raw = raw
+        .replace(/^```(?:json)?\s*/i, "")
+        .replace(/\s*```$/i, "")
+        .trim();
+    }
+    } catch (error) {
+      console.error(
+        "OpenAI primary failed; using Gemini fallback:",
+        error
+      );
+    }
+  }
+
+
+  if (!raw) {
   for (const model of geminiModels) {
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
@@ -367,7 +633,8 @@ confidence must be an integer from 0 to 100.
     );
   }
 
-    const raw = response.text || "";
+    raw = response.text || "";
+  }
 
     let analysis;
 
