@@ -399,6 +399,8 @@ confidence must be an integer from 0 to 100.
         title: source.title || "Untitled",
         url: source.url || "",
         score: source.score ?? null,
+      authority: source.authority?.score ?? null,
+      authority_type: source.authority?.type ?? "unknown",
       })),
     });
   } catch (error) {
