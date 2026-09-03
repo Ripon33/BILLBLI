@@ -278,3 +278,34 @@ export function buildDecision(input: {
     rationale: `Decision based on a score of ${score} and evidence confidence of ${confidence}.`,
   };
 }
+
+export function validateDecisionObject(
+  decision: DecisionObject,
+): { valid: boolean; errors: string[] } {
+  const errors: string[] = [];
+
+  if (!validateFactorWeights(decision.decision_factors)) {
+    errors.push("Factor weights must total 100");
+  }
+
+  if (
+    decision.decision.score < 0 ||
+    decision.decision.score > 100
+  ) {
+    errors.push("Decision score must be between 0 and 100");
+  }
+
+  if (
+    !validateEvidenceReferences(
+      decision.evidence,
+      decision.sources as Array<{ id: string }>,
+    )
+  ) {
+    errors.push("Evidence references an unknown source");
+  }
+
+  return {
+    valid: errors.length === 0,
+    errors,
+  };
+}

@@ -9,6 +9,7 @@ import {
   calculateDecisionScore,
   detectConflicts,
   buildDecision,
+  validateDecisionObject,
 } from "./decision-intelligence";
 
 describe("decision intelligence domain model", () => {
@@ -501,5 +502,129 @@ describe("decision engine", () => {
     });
 
     expect(result.state).toBe("INSUFFICIENT_EVIDENCE");
+  });
+});
+
+describe("decision validation", () => {
+  it("accepts a valid decision object", () => {
+    const result = validateDecisionObject({
+      question: "Should we enter this market?",
+      decision: {
+        recommendation: "Proceed",
+        score: 82,
+        confidence: 85,
+        rationale: "Strong evidence supports entry.",
+        state: "RECOMMENDATION",
+      },
+      decision_factors: [
+        { name: "Market / Demand", score: 80, weight: 25, evidence_strength: 85, explanation: "Strong demand." },
+        { name: "Economics / ROI", score: 80, weight: 20, evidence_strength: 85, explanation: "Good economics." },
+        { name: "Feasibility", score: 80, weight: 15, evidence_strength: 85, explanation: "Feasible." },
+        { name: "Competition", score: 80, weight: 10, evidence_strength: 85, explanation: "Manageable." },
+        { name: "Risk", score: 80, weight: 15, evidence_strength: 85, explanation: "Acceptable risk." },
+        { name: "Regulation / Constraints", score: 80, weight: 15, evidence_strength: 85, explanation: "No major constraints." },
+      ],
+      claims: [],
+      evidence: [],
+      alternatives: [],
+      risks: [],
+      assumptions: [],
+      conflicts: [],
+      reassessment_triggers: [],
+      sources: [],
+    });
+
+    expect(result.valid).toBe(true);
+    expect(result.errors).toEqual([]);
+  });
+
+  it("rejects invalid factor weights", () => {
+    const result = validateDecisionObject({
+      question: "Should we enter this market?",
+      decision: {
+        recommendation: "Proceed",
+        score: 82,
+        confidence: 85,
+        rationale: "Strong evidence.",
+        state: "RECOMMENDATION",
+      },
+      decision_factors: [
+        { name: "Market / Demand", score: 80, weight: 50, evidence_strength: 80, explanation: "Demand." },
+        { name: "Economics / ROI", score: 80, weight: 20, evidence_strength: 80, explanation: "Economics." },
+      ],
+      claims: [],
+      evidence: [],
+      alternatives: [],
+      risks: [],
+      assumptions: [],
+      conflicts: [],
+      reassessment_triggers: [],
+      sources: [],
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain("Factor weights must total 100");
+  });
+
+  it("rejects evidence with an unknown source", () => {
+    const result = validateDecisionObject({
+      question: "Should we enter this market?",
+      decision: {
+        recommendation: "Proceed",
+        score: 82,
+        confidence: 85,
+        rationale: "Strong evidence.",
+        state: "RECOMMENDATION",
+      },
+      decision_factors: [],
+      claims: [],
+      evidence: [{
+        id: "evidence-1",
+        source_id: "missing-source",
+        claim: "Demand is increasing.",
+        polarity: "supporting",
+        type: "fact",
+        strength: 80,
+        verification: "verified",
+      }],
+      alternatives: [],
+      risks: [],
+      assumptions: [],
+      conflicts: [],
+      reassessment_triggers: [],
+      sources: [{ id: "source-1" }],
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain(
+      "Evidence references an unknown source",
+    );
+  });
+
+  it("rejects decision scores outside the 0-100 range", () => {
+    const result = validateDecisionObject({
+      question: "Should we enter this market?",
+      decision: {
+        recommendation: "Proceed",
+        score: 120,
+        confidence: 85,
+        rationale: "Strong evidence.",
+        state: "RECOMMENDATION",
+      },
+      decision_factors: [],
+      claims: [],
+      evidence: [],
+      alternatives: [],
+      risks: [],
+      assumptions: [],
+      conflicts: [],
+      reassessment_triggers: [],
+      sources: [],
+    });
+
+    expect(result.valid).toBe(false);
+    expect(result.errors).toContain(
+      "Decision score must be between 0 and 100",
+    );
   });
 });
