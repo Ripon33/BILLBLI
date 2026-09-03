@@ -241,3 +241,40 @@ export function detectConflicts(
 
   return conflicts;
 }
+
+export function buildDecision(input: {
+  question: string;
+  score: number;
+  confidence: number;
+  conflicts: DecisionConflict[];
+}): Decision {
+  const score = clampScore(input.score);
+  const confidence = clampScore(input.confidence);
+
+  let state: DecisionState;
+  let recommendation: string;
+
+  if (confidence < 50) {
+    state = "INSUFFICIENT_EVIDENCE";
+    recommendation = "Insufficient evidence";
+  } else if (
+    input.conflicts.some((conflict) => conflict.severity === "material")
+  ) {
+    state = "CONTESTED_DECISION";
+    recommendation = "Proceed with caution";
+  } else if (confidence < 70) {
+    state = "DIRECTIONAL_RECOMMENDATION";
+    recommendation = score >= 50 ? "Proceed directionally" : "Do not proceed directionally";
+  } else {
+    state = "RECOMMENDATION";
+    recommendation = score >= 50 ? "Proceed" : "Do not proceed";
+  }
+
+  return {
+    recommendation,
+    score,
+    confidence,
+    state,
+    rationale: `Decision based on a score of ${score} and evidence confidence of ${confidence}.`,
+  };
+}

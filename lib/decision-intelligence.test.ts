@@ -8,6 +8,7 @@ import {
   scoreEvidence,
   calculateDecisionScore,
   detectConflicts,
+  buildDecision,
 } from "./decision-intelligence";
 
 describe("decision intelligence domain model", () => {
@@ -445,5 +446,60 @@ describe("conflict detection", () => {
     ];
 
     expect(detectConflicts(evidence)).toEqual([]);
+  });
+});
+
+describe("decision engine", () => {
+  it("returns a recommendation for strong positive evidence", () => {
+    const result = buildDecision({
+      question: "Should we enter this market?",
+      score: 82,
+      confidence: 85,
+      conflicts: [],
+    });
+
+    expect(result.state).toBe("RECOMMENDATION");
+    expect(result.recommendation).toBe("Proceed");
+  });
+
+  it("returns a directional recommendation when evidence is incomplete", () => {
+    const result = buildDecision({
+      question: "Should we enter this market?",
+      score: 72,
+      confidence: 60,
+      conflicts: [],
+    });
+
+    expect(result.state).toBe("DIRECTIONAL_RECOMMENDATION");
+  });
+
+  it("returns contested decision when material conflicts exist", () => {
+    const result = buildDecision({
+      question: "Should we enter this market?",
+      score: 78,
+      confidence: 80,
+      conflicts: [
+        {
+          id: "conflict-1",
+          claim_ids: [],
+          evidence_ids: ["evidence-1", "evidence-2"],
+          severity: "material",
+          explanation: "Sources disagree.",
+        },
+      ],
+    });
+
+    expect(result.state).toBe("CONTESTED_DECISION");
+  });
+
+  it("returns insufficient evidence when confidence is too low", () => {
+    const result = buildDecision({
+      question: "Should we enter this market?",
+      score: 75,
+      confidence: 35,
+      conflicts: [],
+    });
+
+    expect(result.state).toBe("INSUFFICIENT_EVIDENCE");
   });
 });
