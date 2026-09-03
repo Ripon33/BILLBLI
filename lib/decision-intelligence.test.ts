@@ -3,6 +3,7 @@ import {
   clampScore,
   validateFactorWeights,
   validateEvidenceReferences,
+  extractStructuredEvidence,
 } from "./decision-intelligence";
 
 describe("decision intelligence domain model", () => {
@@ -116,5 +117,75 @@ describe("evidence reference validation", () => {
     ];
 
     expect(validateEvidenceReferences(evidence, sources)).toBe(false);
+  });
+});
+
+describe("structured evidence extraction", () => {
+  it("extracts supporting evidence from a source", () => {
+    const evidence = extractStructuredEvidence([
+      {
+        id: "source-1",
+        text: "The market grew by 20% in 2025.",
+      },
+    ]);
+
+    expect(evidence).toHaveLength(1);
+    expect(evidence[0]).toMatchObject({
+      source_id: "source-1",
+      claim: "The market grew by 20% in 2025.",
+      polarity: "supporting",
+      type: "fact",
+    });
+  });
+
+  it("extracts opposing evidence", () => {
+    const evidence = extractStructuredEvidence([
+      {
+        id: "source-2",
+        text: "The market declined by 10% in 2025.",
+      },
+    ]);
+
+    expect(evidence[0]).toMatchObject({
+      source_id: "source-2",
+      polarity: "against",
+      type: "fact",
+    });
+  });
+
+  it("classifies forecasts separately from facts", () => {
+    const evidence = extractStructuredEvidence([
+      {
+        id: "source-3",
+        text: "Analysts forecast that demand will increase next year.",
+      },
+    ]);
+
+    expect(evidence[0]).toMatchObject({
+      source_id: "source-3",
+      type: "forecast",
+    });
+  });
+
+  it("preserves source references", () => {
+    const evidence = extractStructuredEvidence([
+      {
+        id: "source-7",
+        text: "Customers are increasingly adopting the product.",
+      },
+    ]);
+
+    expect(evidence[0].source_id).toBe("source-7");
+  });
+
+  it("returns no evidence for empty source material", () => {
+    expect(
+      extractStructuredEvidence([
+        {
+          id: "source-empty",
+          text: "",
+        },
+      ]),
+    ).toEqual([]);
   });
 });

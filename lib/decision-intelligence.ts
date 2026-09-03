@@ -111,3 +111,37 @@ export function validateEvidenceReferences(
     sourceIds.has(item.source_id),
   );
 }
+
+
+export function extractStructuredEvidence(
+  sources: Array<{ id: string; text: string }>,
+): Evidence[] {
+  return sources
+    .filter((source) => source.text.trim().length > 0)
+    .map((source) => {
+      const text = source.text.trim();
+      const lower = text.toLowerCase();
+
+      const type: EvidenceType =
+        /forecast|forecasted|predict|predicted|expected|will increase|will decrease|next year/.test(
+          lower,
+        )
+          ? "forecast"
+          : "fact";
+
+      const polarity: EvidencePolarity =
+        /declined|decreased|fell|drop|negative|risk|against/.test(lower)
+          ? "against"
+          : "supporting";
+
+      return {
+        id: `evidence-${source.id}`,
+        source_id: source.id,
+        claim: text,
+        polarity,
+        type,
+        strength: 50,
+        verification: "single_source",
+      };
+    });
+}
