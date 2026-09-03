@@ -5,6 +5,7 @@ import {
   validateEvidenceReferences,
   extractStructuredEvidence,
   extractClaims,
+  scoreEvidence,
 } from "./decision-intelligence";
 
 describe("decision intelligence domain model", () => {
@@ -258,5 +259,69 @@ describe("claim extraction", () => {
     const claims = extractClaims(evidence);
 
     expect(claims[0].confidence).toBe(90);
+  });
+});
+
+describe("evidence scoring", () => {
+  it("scores verified high-quality evidence higher than weak evidence", () => {
+    const strong = scoreEvidence({
+      authority: 95,
+      relevance: 95,
+      directness: 90,
+      freshness: 90,
+      corroboration: 85,
+    });
+
+    const weak = scoreEvidence({
+      authority: 30,
+      relevance: 40,
+      directness: 35,
+      freshness: 30,
+      corroboration: 20,
+    });
+
+    expect(strong).toBeGreaterThan(weak);
+  });
+
+  it("returns a normalized score between 0 and 100", () => {
+    expect(
+      scoreEvidence({
+        authority: 100,
+        relevance: 100,
+        directness: 100,
+        freshness: 100,
+        corroboration: 100,
+      }),
+    ).toBe(100);
+
+    expect(
+      scoreEvidence({
+        authority: 0,
+        relevance: 0,
+        directness: 0,
+        freshness: 0,
+        corroboration: 0,
+      }),
+    ).toBe(0);
+  });
+
+  it("increases evidence strength when corroborated", () => {
+    const singleSource = scoreEvidence({
+      authority: 80,
+      relevance: 80,
+      directness: 80,
+      freshness: 80,
+      corroboration: 20,
+    });
+
+    const corroborated = scoreEvidence({
+      authority: 80,
+      relevance: 80,
+      directness: 80,
+      freshness: 80,
+      corroboration: 90,
+    });
+
+    expect(corroborated).toBeGreaterThan(singleSource);
   });
 });

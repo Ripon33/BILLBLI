@@ -169,3 +169,21 @@ export function extractClaims(evidence: Evidence[]): Claim[] {
     evidence_ids: items.map((item) => item.id),
   }));
 }
+
+export function scoreEvidence(input: {
+  authority: number;
+  relevance: number;
+  directness: number;
+  freshness: number;
+  corroboration: number;
+}): number {
+  const score =
+    (input.authority *
+      input.relevance *
+      input.directness *
+      input.freshness *
+      input.corroboration) /
+    100000000;
+
+  return Math.round(clampScore(score));
+}
