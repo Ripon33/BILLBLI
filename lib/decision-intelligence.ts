@@ -203,3 +203,41 @@ export function calculateDecisionScore(
 
   return Math.round(clampScore(weightedScore));
 }
+
+export function detectConflicts(
+  evidence: Evidence[],
+): DecisionConflict[] {
+  const groups = new Map<string, Evidence[]>();
+
+  for (const item of evidence) {
+    const key = item.claim.trim().toLowerCase();
+    if (!key) continue;
+
+    const group = groups.get(key) ?? [];
+    group.push(item);
+    groups.set(key, group);
+  }
+
+  const conflicts: DecisionConflict[] = [];
+
+  for (const [claim, items] of groups) {
+    const hasSupporting = items.some(
+      (item) => item.polarity === "supporting",
+    );
+    const hasAgainst = items.some(
+      (item) => item.polarity === "against",
+    );
+
+    if (hasSupporting && hasAgainst) {
+      conflicts.push({
+        id: `conflict-${conflicts.length + 1}`,
+        claim_ids: [],
+        evidence_ids: items.map((item) => item.id),
+        severity: "material",
+        explanation: `Conflicting evidence exists for: ${claim}`,
+      });
+    }
+  }
+
+  return conflicts;
+}

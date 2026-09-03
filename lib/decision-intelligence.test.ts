@@ -7,6 +7,7 @@ import {
   extractClaims,
   scoreEvidence,
   calculateDecisionScore,
+  detectConflicts,
 } from "./decision-intelligence";
 
 describe("decision intelligence domain model", () => {
@@ -361,5 +362,88 @@ describe("decision factor scoring", () => {
     ];
 
     expect(calculateDecisionScore(factors)).toBe(59);
+  });
+});
+
+describe("conflict detection", () => {
+  it("detects opposing evidence about the same claim", () => {
+    const evidence = [
+      {
+        id: "evidence-1",
+        source_id: "source-1",
+        claim: "Demand is increasing.",
+        polarity: "supporting" as const,
+        type: "fact" as const,
+        strength: 85,
+        verification: "verified" as const,
+      },
+      {
+        id: "evidence-2",
+        source_id: "source-2",
+        claim: "Demand is increasing.",
+        polarity: "against" as const,
+        type: "fact" as const,
+        strength: 80,
+        verification: "verified" as const,
+      },
+    ];
+
+    const conflicts = detectConflicts(evidence);
+
+    expect(conflicts).toHaveLength(1);
+    expect(conflicts[0]).toMatchObject({
+      severity: "material",
+      evidence_ids: ["evidence-1", "evidence-2"],
+    });
+  });
+
+  it("does not create a conflict when evidence has one polarity", () => {
+    const evidence = [
+      {
+        id: "evidence-1",
+        source_id: "source-1",
+        claim: "Demand is increasing.",
+        polarity: "supporting" as const,
+        type: "fact" as const,
+        strength: 85,
+        verification: "verified" as const,
+      },
+      {
+        id: "evidence-2",
+        source_id: "source-2",
+        claim: "Demand is increasing.",
+        polarity: "supporting" as const,
+        type: "fact" as const,
+        strength: 80,
+        verification: "corroborated" as const,
+      },
+    ];
+
+    expect(detectConflicts(evidence)).toEqual([]);
+  });
+
+  it("ignores unrelated claims", () => {
+    const evidence = [
+      {
+        id: "evidence-1",
+        source_id: "source-1",
+        claim: "Demand is increasing.",
+        polarity: "supporting" as const,
+        type: "fact" as const,
+        strength: 85,
+        verification: "verified" as const,
+      },
+      {
+        id: "evidence-2",
+        source_id: "source-2",
+        claim: "Competition is increasing.",
+        polarity: "against" as const,
+        type: "fact" as const,
+        strength: 80,
+        verification: "verified" as const,
+      },
+    ];
+
+    expect(detectConflicts(evidence)).toEqual([]);
   });
 });
