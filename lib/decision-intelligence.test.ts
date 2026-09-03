@@ -10,6 +10,7 @@ import {
   detectConflicts,
   buildDecision,
   validateDecisionObject,
+  buildResearchDecision,
 } from "./decision-intelligence";
 
 describe("decision intelligence domain model", () => {
@@ -626,5 +627,49 @@ describe("decision validation", () => {
     expect(result.errors).toContain(
       "Decision score must be between 0 and 100",
     );
+  });
+});
+
+describe("research pipeline integration", () => {
+  it("builds a validated decision object from research evidence", () => {
+    const sources = [
+      {
+        id: "source-1",
+        title: "Market Report",
+        url: "https://example.com/report",
+      },
+    ];
+
+    const evidence = [{
+      id: "evidence-1",
+      source_id: "source-1",
+      claim: "Demand is increasing.",
+      polarity: "supporting" as const,
+      type: "fact" as const,
+      strength: 90,
+      verification: "verified" as const,
+    }];
+
+    const result = buildResearchDecision({
+      question: "Should we enter this market?",
+      sources,
+      evidence,
+      factors: [
+        { name: "Market / Demand", score: 80, weight: 25, evidence_strength: 90, explanation: "Strong demand." },
+        { name: "Economics / ROI", score: 70, weight: 20, evidence_strength: 80, explanation: "Good economics." },
+        { name: "Feasibility", score: 70, weight: 15, evidence_strength: 80, explanation: "Feasible." },
+        { name: "Competition", score: 60, weight: 10, evidence_strength: 70, explanation: "Manageable." },
+        { name: "Risk", score: 60, weight: 15, evidence_strength: 70, explanation: "Moderate risk." },
+        { name: "Regulation / Constraints", score: 70, weight: 15, evidence_strength: 80, explanation: "Manageable constraints." },
+      ],
+    });
+
+    expect(result.valid).toBe(true);
+    expect(result.decision.question).toBe(
+      "Should we enter this market?",
+    );
+    expect(result.decision.evidence).toHaveLength(1);
+    expect(result.decision.claims).toHaveLength(1);
+    expect(result.decision.sources).toEqual(sources);
   });
 });

@@ -309,3 +309,57 @@ export function validateDecisionObject(
     errors,
   };
 }
+
+export function buildResearchDecision(input: {
+  question: string;
+  sources: unknown[];
+  evidence: Evidence[];
+  factors: DecisionFactor[];
+}): {
+  valid: boolean;
+  errors: string[];
+  decision: DecisionObject;
+} {
+  const claims = extractClaims(input.evidence);
+  const conflicts = detectConflicts(input.evidence);
+  const score = calculateDecisionScore(input.factors);
+
+  const evidenceStrength =
+    input.evidence.length === 0
+      ? 0
+      : Math.round(
+          input.evidence.reduce(
+            (sum, item) => sum + item.strength,
+            0,
+          ) / input.evidence.length,
+        );
+
+  const decision = buildDecision({
+    question: input.question,
+    score,
+    confidence: evidenceStrength,
+    conflicts,
+  });
+
+  const decisionObject: DecisionObject = {
+    question: input.question,
+    decision,
+    decision_factors: input.factors,
+    claims,
+    evidence: input.evidence,
+    alternatives: [],
+    risks: [],
+    assumptions: [],
+    conflicts,
+    reassessment_triggers: [],
+    sources: input.sources,
+  };
+
+  const validation = validateDecisionObject(decisionObject);
+
+  return {
+    valid: validation.valid,
+    errors: validation.errors,
+    decision: decisionObject,
+  };
+}
