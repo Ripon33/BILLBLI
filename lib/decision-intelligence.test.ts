@@ -4,6 +4,7 @@ import {
   validateFactorWeights,
   validateEvidenceReferences,
   extractStructuredEvidence,
+  extractClaims,
 } from "./decision-intelligence";
 
 describe("decision intelligence domain model", () => {
@@ -187,5 +188,75 @@ describe("structured evidence extraction", () => {
         },
       ]),
     ).toEqual([]);
+  });
+});
+
+describe("claim extraction", () => {
+  it("creates a claim from evidence", () => {
+    const evidence = [{
+      id: "evidence-1",
+      source_id: "source-1",
+      claim: "The market grew by 20% in 2025.",
+      polarity: "supporting" as const,
+      type: "fact" as const,
+      strength: 80,
+      verification: "verified" as const,
+    }];
+
+    const claims = extractClaims(evidence);
+
+    expect(claims).toHaveLength(1);
+    expect(claims[0]).toMatchObject({
+      statement: "The market grew by 20% in 2025.",
+      type: "fact",
+      evidence_ids: ["evidence-1"],
+    });
+  });
+
+  it("groups evidence supporting the same claim", () => {
+    const evidence = [
+      {
+        id: "evidence-1",
+        source_id: "source-1",
+        claim: "Demand is increasing.",
+        polarity: "supporting" as const,
+        type: "fact" as const,
+        strength: 80,
+        verification: "verified" as const,
+      },
+      {
+        id: "evidence-2",
+        source_id: "source-2",
+        claim: "Demand is increasing.",
+        polarity: "supporting" as const,
+        type: "fact" as const,
+        strength: 70,
+        verification: "corroborated" as const,
+      },
+    ];
+
+    const claims = extractClaims(evidence);
+
+    expect(claims).toHaveLength(1);
+    expect(claims[0].evidence_ids).toEqual([
+      "evidence-1",
+      "evidence-2",
+    ]);
+  });
+
+  it("calculates claim confidence from supporting evidence", () => {
+    const evidence = [{
+      id: "evidence-1",
+      source_id: "source-1",
+      claim: "The market is growing.",
+      polarity: "supporting" as const,
+      type: "fact" as const,
+      strength: 90,
+      verification: "verified" as const,
+    }];
+
+    const claims = extractClaims(evidence);
+
+    expect(claims[0].confidence).toBe(90);
   });
 });

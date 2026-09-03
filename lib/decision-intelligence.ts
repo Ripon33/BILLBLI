@@ -145,3 +145,27 @@ export function extractStructuredEvidence(
       };
     });
 }
+
+export function extractClaims(evidence: Evidence[]): Claim[] {
+  const groups = new Map<string, Evidence[]>();
+
+  for (const item of evidence) {
+    const key = item.claim.trim().toLowerCase();
+    if (!key) continue;
+
+    const group = groups.get(key) ?? [];
+    group.push(item);
+    groups.set(key, group);
+  }
+
+  return Array.from(groups.values()).map((items, index) => ({
+    id: `claim-${index + 1}`,
+    statement: items[0].claim,
+    type: items[0].type,
+    confidence: Math.round(
+      items.reduce((sum, item) => sum + item.strength, 0) /
+        items.length,
+    ),
+    evidence_ids: items.map((item) => item.id),
+  }));
+}
