@@ -11,6 +11,7 @@ import {
   buildDecision,
   validateDecisionObject,
   buildResearchDecision,
+  buildDecisionFactors,
 } from "./decision-intelligence";
 
 describe("decision intelligence domain model", () => {
@@ -328,6 +329,37 @@ describe("evidence scoring", () => {
     });
 
     expect(corroborated).toBeGreaterThan(singleSource);
+  });
+});
+
+describe("decision factor scoring", () => {
+  it("scores factors from evidence instead of copying one global confidence", () => {
+    const evidence = [
+      {
+        id: "evidence-1",
+        source_id: "source-1",
+        claim: "Strong market demand evidence.",
+        polarity: "supporting" as const,
+        type: "fact" as const,
+        strength: 90,
+        verification: "verified" as const,
+      },
+      {
+        id: "evidence-2",
+        source_id: "source-2",
+        claim: "Regulatory restrictions are significant.",
+        polarity: "against" as const,
+        type: "fact" as const,
+        strength: 80,
+        verification: "verified" as const,
+      },
+    ];
+
+    const factors = buildDecisionFactors(evidence);
+
+    expect(factors).toHaveLength(6);
+    expect(factors.find((f) => f.name === "Market / Demand")?.score).toBeGreaterThan(50);
+    expect(factors.find((f) => f.name === "Regulation / Constraints")?.score).toBeLessThan(50);
   });
 });
 

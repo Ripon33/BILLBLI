@@ -188,6 +188,48 @@ export function scoreEvidence(input: {
   return Math.round(clampScore(score));
 }
 
+export function buildDecisionFactors(evidence: Evidence[]): DecisionFactor[] {
+  const definitions = [
+    { name: "Market / Demand", weight: 25, keywords: ["market", "demand", "customer", "adoption", "growth"] },
+    { name: "Economics / ROI", weight: 20, keywords: ["price", "revenue", "cost", "profit", "roi", "economic"] },
+    { name: "Feasibility", weight: 15, keywords: ["feasible", "technology", "technical", "implementation", "capacity"] },
+    { name: "Competition", weight: 10, keywords: ["competitor", "competition", "market share", "alternative"] },
+    { name: "Risk", weight: 15, keywords: ["risk", "uncertainty", "challenge", "volatility", "failure"] },
+    { name: "Regulation / Constraints", weight: 15, keywords: ["regulation", "regulatory", "law", "legal", "policy", "constraint"] },
+  ];
+
+  return definitions.map(({ name, weight, keywords }) => {
+    const relevant = evidence.filter((item) => {
+      const claim = item.claim.toLowerCase();
+      return keywords.some((keyword) => claim.includes(keyword));
+    });
+
+    if (relevant.length === 0) {
+      return {
+        name,
+        score: 50,
+        weight,
+        evidence_strength: 0,
+        explanation: "No directly relevant evidence was found for this factor.",
+      };
+    }
+
+    const totalWeight = relevant.reduce((sum, item) => sum + item.strength, 0);
+    const positive = relevant.filter((item) => item.polarity === "supporting").reduce((sum, item) => sum + item.strength, 0);
+    const negative = relevant.filter((item) => item.polarity === "against").reduce((sum, item) => sum + item.strength, 0);
+    const score = totalWeight === 0 ? 50 : 50 + ((positive - negative) / totalWeight) * 50;
+    const evidenceStrength = Math.round(totalWeight / relevant.length);
+
+    return {
+      name,
+      score: Math.round(clampScore(score)),
+      weight,
+      evidence_strength: clampScore(evidenceStrength),
+      explanation: `Evidence-derived score for ${name}.`,
+    };
+  });
+}
+
 export function calculateDecisionScore(
   factors: Array<{ name: string; score: number; weight: number }>,
 ): number {

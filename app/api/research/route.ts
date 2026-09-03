@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 import { buildResearchPlan } from "@/lib/research";
+import { buildDecisionFactors, buildResearchDecision, extractStructuredEvidence } from "@/lib/decision-intelligence";
 
 type TavilyResult = {
   title?: string;
@@ -655,7 +656,31 @@ confidence must be an integer from 0 to 100.
       };
     }
 
-    // 7. Return the complete BILLBLI research result.
+    // 7. Build the validated V2 decision object from researched sources.
+  const v2Sources = sources.map((source, index) => ({
+    id: `source-${index + 1}`,
+    text: source.content || "",
+    title: source.title || "Untitled",
+    url: source.url || "",
+  }));
+
+  const v2Evidence = extractStructuredEvidence(v2Sources);
+
+  const v2Factors = buildDecisionFactors(v2Evidence);
+
+  const v2Decision = buildResearchDecision({
+    question,
+    sources: v2Sources,
+    evidence: v2Evidence,
+    factors: v2Factors,
+  });
+
+  if (!v2Decision.valid) {
+    throw new Error(`BILLBLI decision validation failed: ${v2Decision.errors.join("; ")}`);
+  }
+
+  // 8. Return the complete BILLBLI research result.
+
     return NextResponse.json({
       status: "researched",
       question,
