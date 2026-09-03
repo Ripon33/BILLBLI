@@ -6,6 +6,7 @@ import {
   extractStructuredEvidence,
   extractClaims,
   scoreEvidence,
+  calculateDecisionScore,
 } from "./decision-intelligence";
 
 describe("decision intelligence domain model", () => {
@@ -323,5 +324,42 @@ describe("evidence scoring", () => {
     });
 
     expect(corroborated).toBeGreaterThan(singleSource);
+  });
+});
+
+describe("decision factor scoring", () => {
+  it("calculates the weighted decision score", () => {
+    const factors = [
+      { name: "Market / Demand", score: 80, weight: 25 },
+      { name: "Economics / ROI", score: 70, weight: 20 },
+      { name: "Feasibility", score: 60, weight: 15 },
+      { name: "Competition", score: 50, weight: 10 },
+      { name: "Risk", score: 40, weight: 15 },
+      { name: "Regulation / Constraints", score: 30, weight: 15 },
+    ];
+
+    expect(calculateDecisionScore(factors)).toBe(59);
+  });
+
+  it("requires factor weights to total 100", () => {
+    expect(() =>
+      calculateDecisionScore([
+        { name: "Market / Demand", score: 80, weight: 50 },
+        { name: "Economics / ROI", score: 70, weight: 30 },
+      ]),
+    ).toThrow();
+  });
+
+  it("clamps factor scores before calculating", () => {
+    const factors = [
+      { name: "Market / Demand", score: 120, weight: 25 },
+      { name: "Economics / ROI", score: 70, weight: 20 },
+      { name: "Feasibility", score: 60, weight: 15 },
+      { name: "Competition", score: 50, weight: 10 },
+      { name: "Risk", score: 40, weight: 15 },
+      { name: "Regulation / Constraints", score: -20, weight: 15 },
+    ];
+
+    expect(calculateDecisionScore(factors)).toBe(59);
   });
 });

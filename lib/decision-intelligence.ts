@@ -187,3 +187,19 @@ export function scoreEvidence(input: {
 
   return Math.round(clampScore(score));
 }
+
+export function calculateDecisionScore(
+  factors: Array<{ name: string; score: number; weight: number }>,
+): number {
+  if (!validateFactorWeights(factors)) {
+    throw new Error("Factor weights must total 100");
+  }
+
+  const weightedScore = factors.reduce(
+    (total, factor) =>
+      total + clampScore(factor.score) * (factor.weight / 100),
+    0,
+  );
+
+  return Math.round(clampScore(weightedScore));
+}
