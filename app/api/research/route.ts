@@ -686,6 +686,7 @@ confidence must be an integer from 0 to 100.
       question,
       plan,
       analysis,
+      decision: v2Decision.decision,
       sources: sources.map((source, index) => ({
         id: index + 1,
         title: source.title || "Untitled",
