@@ -1,3 +1,8 @@
+import { rankEvidenceSources } from "@/lib/evidence-ranking";
+import { classifyIntent } from "@/lib/intent-engine";
+import { getAnswerRoute } from "@/lib/answer-routing";
+import { createStudyResponse } from "@/lib/study-response";
+import { buildStudyPrompt } from "@/lib/study-prompt";
 import { buildResearchLanguageInstruction } from "@/lib/research-synthesis";
 import { createResearchLanguageContext } from "@/lib/research-language";
 import { buildResearchQueries } from "@/lib/research-query";
@@ -14,292 +19,6 @@ type TavilyResult = {
   content?: string;
   score?: number;
 };
-
-function getSourceAuthority(url?: string) {
-  if (!url) {
-    return { score: 10, type: "unknown" };
-  }
-
-  try {
-    const hostname = new URL(url).hostname.toLowerCase();
-
-    if (
-      hostname.endsWith(".gov") ||
-      hostname.endsWith(".gov.uk") ||
-      hostname.endsWith(".gov.au") ||
-      hostname.includes(".gov.")
-    ) {
-      return { score: 98, type: "government_or_regulator" };
-    }
-
-    if (
-      hostname.endsWith(".edu") ||
-      hostname.endsWith(".ac.uk") ||
-      hostname.includes("university") ||
-      hostname.includes("edu.")
-    ) {
-      return { score: 92, type: "academic_or_research" };
-    }
-
-    if (
-      hostname.includes("who.int") ||
-      hostname.includes("oecd.org") ||
-      hostname.includes("worldbank.org") ||
-      hostname.includes("imf.org") ||
-      hostname.includes("un.org") ||
-      hostname.includes("europa.eu") ||
-      hostname.includes("ecb.europa.eu")
-    ) {
-      return { score: 96, type: "international_or_research_body" };
-    }
-
-    if (
-      hostname.includes("sec.gov") ||
-      hostname.includes("federalreserve.gov") ||
-      hostname.includes("census.gov")
-    ) {
-      return { score: 98, type: "official_data_or_regulator" };
-    }
-
-    if (
-      hostname.includes("reuters.com") ||
-      hostname.includes("apnews.com") ||
-      hostname.includes("bbc.com") ||
-      hostname.includes("ft.com") ||
-      hostname.includes("bloomberg.com") ||
-      hostname.includes("wsj.com") ||
-      hostname.includes("nytimes.com") ||
-      hostname.includes("economist.com")
-    ) {
-      return { score: 85, type: "established_news_or_business_media" };
-    }
-
-    if (
-      hostname.includes("facebook.com") ||
-      hostname.includes("instagram.com") ||
-      hostname.includes("tiktok.com") ||
-      hostname.includes("youtube.com") ||
-      hostname.includes("x.com") ||
-      hostname.includes("twitter.com") ||
-      hostname.includes("linkedin.com")
-    ) {
-      return { score: 15, type: "social_or_user_generated" };
-    }
-
-    if (
-      hostname.includes("medium.com") ||
-      hostname.includes("substack.com") ||
-      hostname.includes("wordpress.com") ||
-      hostname.includes("blogspot.com")
-    ) {
-      return { score: 30, type: "personal_or_independent_blog" };
-    }
-
-    if (
-      hostname.startsWith("docs.") ||
-      hostname.includes("developer.") ||
-      hostname.includes("research.")
-    ) {
-      return { score: 70, type: "technical_or_research_documentation" };
-    }
-
-    return { score: 50, type: "general_web_source" };
-  } catch {
-    return { score: 10, type: "invalid_or_unknown_source" };
-  }
-}
-
-
-function normalizeSourceUrl(url?: string) {
-  if (!url) return "";
-  try {
-    const parsed = new URL(url);
-    parsed.hash = "";
-    parsed.search = "";
-    return parsed.toString().replace(/\/$/, "").toLowerCase();
-  } catch {
-    return url.trim().toLowerCase();
-  }
-}
-
-function sourceRelevance(question: string, source: TavilyResult) {
-  const stopWords = new Set([
-    "the", "and", "for", "from", "with", "that", "this", "what",
-    "how", "why", "when", "where", "which", "into", "about",
-    "are", "can", "should", "would", "could", "best", "make",
-    "does", "will", "than", "their", "they", "them", "your",
-    "you", "our", "its", "use", "using", "2026", "2027"
-  ]);
-
-  const tokenize = (value: string) =>
-    value
-      .toLowerCase()
-      .replace(/https?:\/\/\S+/g, " ")
-      .replace(/[^\p{L}\p{N}\s-]/gu, " ")
-      .split(/\s+/)
-      .map((word) => word.replace(/^-+|-+$/g, ""))
-      .filter((word) => word.length >= 3 && !stopWords.has(word));
-
-  const questionTerms = Array.from(
-    new Set(tokenize(question))
-  );
-
-  if (questionTerms.length === 0) return 50;
-
-  const titleTerms = new Set(tokenize(source.title || ""));
-  const contentTerms = new Set(tokenize(source.content || ""));
-
-  let titleMatches = 0;
-  let contentMatches = 0;
-
-  for (const term of questionTerms) {
-    if (titleTerms.has(term)) titleMatches++;
-    if (contentTerms.has(term)) contentMatches++;
-  }
-
-  const titleRatio = titleMatches / questionTerms.length;
-  const contentRatio = contentMatches / questionTerms.length;
-
-  // Title matches are stronger evidence of topical relevance.
-  let score = titleRatio * 70 + contentRatio * 30;
-
-  // Preserve Tavily's retrieval signal, but never let it dominate relevance.
-  const tavilyScore =
-    typeof source.score === "number"
-      ? Math.max(0, Math.min(1, source.score))
-      : 0;
-
-  score = score * 0.85 + tavilyScore * 15;
-
-  return Math.round(Math.max(0, Math.min(100, score)));
-}
-
-function sourceDirectness(source: TavilyResult) {
-  const title = (source.title || "").toLowerCase();
-  const content = (source.content || "").toLowerCase();
-
-  let score = 50;
-
-  if (title.length > 0) score += 10;
-  if (content.length > 150) score += 10;
-
-  // Prefer sources whose title directly describes evidence,
-  // rather than generic collections or promotional pages.
-  if (
-    /statistics|data|report|study|research|survey|forecast|market|analysis|official/i.test(
-      title
-    )
-  ) {
-    score += 20;
-  }
-
-  if (/top \d+|best \d+|ideas|ways to make money|side hustles/i.test(title)) {
-    score -= 15;
-  }
-
-  if (/sponsored|advertisement|affiliate/i.test(content)) {
-    score -= 20;
-  }
-
-  return Math.max(0, Math.min(100, score));
-}
-
-function rankSources(question: string, rawSources: TavilyResult[]) {
-  const unique = new Map<string, TavilyResult>();
-
-  for (const source of rawSources) {
-    const key = normalizeSourceUrl(source.url);
-
-    if (!key) continue;
-
-    const existing = unique.get(key);
-
-    if (!existing || (source.score ?? 0) > (existing.score ?? 0)) {
-      unique.set(key, source);
-    }
-  }
-
-  const ranked = Array.from(unique.values())
-    .map((source) => {
-      const authority = getSourceAuthority(source.url);
-      const relevance = sourceRelevance(question, source);
-      const directness = sourceDirectness(source);
-
-      // Relevance is deliberately the largest component.
-      const evidenceScore = Math.round(
-        relevance * 0.50 +
-        authority.score * 0.25 +
-        directness * 0.15 +
-        Math.min(100, Math.max(0, (source.score ?? 0) * 100)) * 0.10
-      );
-
-      return {
-        ...source,
-        authority,
-        relevance_score: relevance,
-        directness_score: directness,
-        evidence_score: evidenceScore,
-      };
-    })
-    // Do not allow authority alone to rescue an irrelevant source.
-    .filter(
-      (source) =>
-        source.relevance_score >= 25 ||
-        source.evidence_score >= 65
-    )
-    .sort((a, b) => {
-      if (b.evidence_score !== a.evidence_score) {
-        return b.evidence_score - a.evidence_score;
-      }
-
-      return b.authority.score - a.authority.score;
-    });
-
-  // Keep the evidence set focused and diverse.
-  // Do not allow one publisher/domain to dominate the evidence set.
-  const domainCounts = new Map<string, number>();
-  const diverse = [];
-
-  for (const source of ranked) {
-    let hostname = "";
-
-    try {
-      hostname = new URL(source.url || "").hostname
-        .replace(/^www\./, "")
-        .toLowerCase();
-    } catch {
-      hostname = "unknown";
-    }
-
-    const count = domainCounts.get(hostname) ?? 0;
-
-    // Weak discovery sources are allowed only when they provide
-    // unusually strong topical evidence.
-    const weakSource =
-      source.authority.score <= 30 ||
-      /personal|independent|social|user_generated|general_web_source/i.test(
-        source.authority.type
-      );
-
-    if (weakSource && source.evidence_score < 72) {
-      continue;
-    }
-
-    // Maximum two sources from the same domain.
-    if (count >= 2) {
-      continue;
-    }
-
-    domainCounts.set(hostname, count + 1);
-    diverse.push(source);
-
-    if (diverse.length >= 12) {
-      break;
-    }
-  }
-
-  return diverse;
-}
 
 async function tavilySearch(query: string, apiKey: string) {
   const response = await fetch("https://api.tavily.com/search", {
@@ -341,6 +60,68 @@ export async function POST(req: Request) {
     }
 
     const languageContext = createResearchLanguageContext(question);
+    const classification = classifyIntent(question);
+    const answerRoute = getAnswerRoute(question, classification);
+
+    if (answerRoute === "study") {
+      const studyPrompt = buildStudyPrompt(
+        question,
+        languageContext.language.output,
+      );
+
+      if (!process.env.OPENAI_API_KEY && !process.env.GEMINI_API_KEY) {
+        return NextResponse.json(
+          {
+            error: "AI reasoning service is not configured.",
+            missing: "OPENAI_API_KEY or GEMINI_API_KEY",
+          },
+          { status: 500 },
+        );
+      }
+
+      try {
+        const { generateJsonWithAI } = await import("@/lib/ai-json");
+        const rawStudy = await generateJsonWithAI(studyPrompt);
+
+        let parsedStudy: {
+          explanation?: string;
+          examples?: string[];
+          practiceQuestions?: string[];
+        };
+
+        try {
+          parsedStudy = JSON.parse(rawStudy);
+        } catch {
+          return NextResponse.json(
+            { error: "The Study response was not valid JSON." },
+            { status: 502 },
+          );
+        }
+
+        const studyResponse = createStudyResponse({
+          explanation: parsedStudy.explanation || "",
+          examples: Array.isArray(parsedStudy.examples)
+            ? parsedStudy.examples
+            : [],
+          practiceQuestions: Array.isArray(parsedStudy.practiceQuestions)
+            ? parsedStudy.practiceQuestions
+            : [],
+        });
+
+        return NextResponse.json(studyResponse);
+      } catch (error) {
+        console.error("Study AI generation failed:", error);
+        return NextResponse.json(
+          {
+            error:
+              error instanceof Error
+                ? error.message
+                : "Study response generation failed.",
+          },
+          { status: 502 },
+        );
+      }
+    }
 
   const tavilyKey = process.env.TAVILY_API_KEY;
     const geminiKey = process.env.GEMINI_API_KEY;
@@ -386,7 +167,7 @@ export async function POST(req: Request) {
         }
       }
     }
-  const sources = rankSources(
+  const sources = rankEvidenceSources(
     question,
     Array.from(sourceMap.values())
   );

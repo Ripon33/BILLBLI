@@ -2,8 +2,13 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import DecisionBox from "@/components/DecisionBox";
+import StudyBox from "@/components/StudyBox";
+import type { StudyResponse } from "@/lib/study-response";
 import { createHistoryItem, getHistoryPreview } from "@/lib/research-history";
 import { createResearchRequest } from "@/lib/research-request";
+import { classifyIntent } from "@/lib/intent-engine";
+import { getAnswerRoute } from "@/lib/answer-routing";
+import { shouldUseWebResearch } from "@/lib/research-routing";
 
 type Source = {
   title?: string;
@@ -41,9 +46,11 @@ const HISTORY_KEY = "billbli-research-history";
 
 export default function Home() {
   const [question, setQuestion] = useState("");
-  const [result, setResult] = useState<ResearchResult | null>(null);
+  const [result, setResult] = useState<ResearchResult | StudyResponse | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingStep, setLoadingStep] = useState(0);
+  const [answerRoute, setAnswerRoute] = useState<"study" | "research">("research");
   const [error, setError] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
@@ -55,6 +62,20 @@ export default function Home() {
       // Ignore malformed local history.
     }
   }, []);
+
+    useEffect(() => {
+      if (!loading) return;
+
+      const stepCount = answerRoute === "study" ? 4 : 5;
+
+      const timer = window.setInterval(() => {
+        setLoadingStep((current) =>
+          current < stepCount - 1 ? current + 1 : current
+        );
+      }, 1200);
+
+      return () => window.clearInterval(timer);
+    }, [loading, answerRoute]);
 
   function saveHistory(nextQuestion: string, nextResult: ResearchResult) {
     const item: HistoryItem = createHistoryItem(nextQuestion, nextResult);
@@ -76,6 +97,12 @@ export default function Home() {
     const trimmed = question.trim();
     if (!trimmed || loading) return;
 
+    const classification = classifyIntent(trimmed);
+    const route = getAnswerRoute(trimmed, classification);
+
+    setAnswerRoute(route);
+    setLoadingStep(0);
+    setLoadingStep(0);
     setLoading(true);
     setError("");
     setResult(null);
@@ -98,7 +125,7 @@ export default function Home() {
       }
 
       setResult(data);
-      saveHistory(trimmed, data);
+      if (route === "research") saveHistory(trimmed, data);
     } catch (err) {
       setError(
         err instanceof Error
@@ -291,18 +318,34 @@ export default function Home() {
             ) : loading ? (
               <section className="mx-auto max-w-[820px] pt-24">
                 <div className="mb-4 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-600">
-                  Research in progress
+                  {answerRoute === "study"
+                    ? "Study in progress"
+                    : "Research in progress"}
                 </div>
 
                 <h1 className="text-3xl font-bold tracking-[-0.035em] md:text-5xl">
-                  Building your decision brief.
+                  {answerRoute === "study"
+                    ? "Building your learning response."
+                    : "Building your decision brief."}
                 </h1>
 
                 <div className="mt-10 space-y-3">
-                  <ProgressRow label="Searching relevant evidence" />
-                  <ProgressRow label="Ranking source quality" />
-                  <ProgressRow label="Comparing supporting and conflicting evidence" />
-                  <ProgressRow label="Building recommendation" />
+                  {answerRoute === "study" ? (
+                    <>
+                      <ProgressRow index={0} activeStep={loadingStep} label="Understanding your learning goal" />
+                      <ProgressRow index={1} activeStep={loadingStep} label="Structuring the explanation" />
+                      <ProgressRow index={2} activeStep={loadingStep} label="Building examples" />
+                      <ProgressRow index={3} activeStep={loadingStep} label="Preparing practice questions" />
+                    </>
+                  ) : (
+                    <>
+                      <ProgressRow index={0} activeStep={loadingStep} label="Understanding your question" />
+                      <ProgressRow index={1} activeStep={loadingStep} label="Finding relevant evidence" />
+                      <ProgressRow index={2} activeStep={loadingStep} label="Comparing supporting and conflicting signals" />
+                      <ProgressRow index={3} activeStep={loadingStep} label="Checking risks and uncertainty" />
+                      <ProgressRow index={4} activeStep={loadingStep} label="Building your recommendation" />
+                    </>
+                  )}
                 </div>
               </section>
             ) : (
@@ -314,7 +357,7 @@ export default function Home() {
                     </div>
 
                     <h1 className="max-w-[850px] text-3xl font-bold tracking-[-0.04em] md:text-5xl">
-                      {result?.question || question}
+                      {question}
                     </h1>
                   </div>
 
@@ -326,7 +369,11 @@ export default function Home() {
                   </button>
                 </div>
 
-                <DecisionBox result={result!} />
+                {result && "type" in result && result.type === "study" ? (
+                    <StudyBox result={result as StudyResponse} />
+                  ) : (
+                    <DecisionBox result={result as ResearchResult} />
+                  )}
               </>
             )}
 
@@ -358,11 +405,59 @@ function Feature({ label, value }: { label: string; value: string }) {
   );
 }
 
-function ProgressRow({ label }: { label: string }) {
+function ProgressRow({
+  label,
+  index,
+  activeStep,
+}: {
+  label: string;
+  index: number;
+  activeStep: number;
+}) {
+  const completed = index < activeStep;
+  const active = index === activeStep;
+
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-4">
-      <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />
-      <span className="text-sm text-zinc-600">{label}</span>
+    <div
+      className={`flex items-center gap-3 rounded-xl border px-4 py-4 transition-all duration-500 ${
+        active
+          ? "border-emerald-200 bg-emerald-50/60 shadow-sm"
+          : completed
+            ? "border-zinc-200 bg-white"
+            : "border-zinc-100 bg-zinc-50/60"
+      }`}
+    >
+      <span
+        className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-all duration-500 ${
+          completed
+            ? "bg-emerald-500 text-white"
+            : active
+              ? "bg-emerald-100 text-emerald-700 ring-4 ring-emerald-50"
+              : "bg-zinc-100 text-zinc-400"
+        }`}
+      >
+        {completed ? "✓" : active ? "•" : index + 1}
+      </span>
+
+      <span
+        className={`text-sm transition-colors duration-500 ${
+          active
+            ? "font-semibold text-zinc-800"
+            : completed
+              ? "text-zinc-600"
+              : "text-zinc-400"
+        }`}
+      >
+        {label}
+      </span>
+
+      {active && (
+        <span className="ml-auto flex gap-1">
+          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-500 [animation-delay:-0.3s]" />
+          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-500 [animation-delay:-0.15s]" />
+          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-emerald-500" />
+        </span>
+      )}
     </div>
   );
 }
