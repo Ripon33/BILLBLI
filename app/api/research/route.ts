@@ -1,6 +1,7 @@
 import { buildResearchLanguageInstruction } from "@/lib/research-synthesis";
 import { createResearchLanguageContext } from "@/lib/research-language";
 import { buildResearchQueries } from "@/lib/research-query";
+import { scoreResearchContextFit } from "@/lib/research-context";
 import { withDecisionLanguage } from "@/lib/multilingual-decision";
 import { NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
@@ -134,7 +135,7 @@ function sourceRelevance(question: string, source: TavilyResult) {
     value
       .toLowerCase()
       .replace(/https?:\/\/\S+/g, " ")
-      .replace(/[^a-z0-9\s-]/g, " ")
+      .replace(/[^\p{L}\p{N}\s-]/gu, " ")
       .split(/\s+/)
       .map((word) => word.replace(/^-+|-+$/g, ""))
       .filter((word) => word.length >= 3 && !stopWords.has(word));
