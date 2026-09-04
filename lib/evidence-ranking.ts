@@ -1,3 +1,6 @@
+import type { DecisionContext } from "./decision-context";
+import { scoreResearchContextFit } from "./research-context";
+
 export interface EvidenceSource {
   title?: string;
   content?: string;
@@ -189,6 +192,7 @@ function getSourceAuthority(url?: string) {
 export function rankEvidenceSources(
   question: string,
   rawSources: EvidenceSource[],
+  context?: DecisionContext,
 ): RankedEvidenceSource[] {
   const unique = new Map<string, EvidenceSource>();
 
@@ -205,12 +209,16 @@ export function rankEvidenceSources(
       const authority = getSourceAuthority(source.url);
       const relevance = sourceRelevance(question, source);
       const directness = sourceDirectness(source);
+      const contextFit = context
+        ? scoreResearchContextFit(question, source, context)
+        : 0;
 
       const evidenceScore = Math.round(
         relevance * 0.50 +
         authority.score * 0.25 +
         directness * 0.15 +
-        Math.min(100, Math.max(0, (source.score ?? 0) * 100)) * 0.10
+        contextFit * (context ? 0.10 : 0) +
+        Math.min(100, Math.max(0, (source.score ?? 0) * 100)) * (context ? 0.05 : 0.10)
       );
 
       return {

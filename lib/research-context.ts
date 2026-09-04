@@ -1,3 +1,5 @@
+import type { DecisionContext } from "./decision-context";
+
 export interface ResearchContextSource {
   title?: string;
   content?: string;
@@ -13,8 +15,11 @@ function normalizeText(value: string): string {
 export function scoreResearchContextFit(
   question: string,
   source: ResearchContextSource,
+  context?: DecisionContext,
 ): number {
-  const decisionQuestion = normalizeText(question);
+  const decisionQuestion = normalizeText(
+    context?.location ? `${question} ${context.location}` : question,
+  );
   const sourceText = normalizeText(
     `${source.title ?? ""} ${source.content ?? ""}`,
   );
