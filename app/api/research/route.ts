@@ -11,6 +11,7 @@ import { withDecisionLanguage } from "@/lib/multilingual-decision";
 import { NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 import { buildResearchPlan } from "@/lib/research";
+import { extractDecisionContext } from "@/lib/decision-context";
 import { buildDecisionFactors, buildResearchDecision, extractStructuredEvidence } from "@/lib/decision-intelligence";
 
 type TavilyResult = {
@@ -147,7 +148,8 @@ export async function POST(req: Request) {
     }
 
     // 1. Create BILLBLI's research plan.
-    const plan = buildResearchPlan(question);
+    const decisionContext = extractDecisionContext(question);
+    const plan = buildResearchPlan(question, decisionContext);
 
     // 2. Turn the plan into focused research queries.
     const queries = buildResearchQueries(question);
