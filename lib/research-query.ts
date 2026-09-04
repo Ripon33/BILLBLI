@@ -1,3 +1,4 @@
+import type { DecisionContext } from "./decision-context";
 const RESEARCH_DIMENSIONS = [
   "local market demand",
   "competitors pricing",
@@ -46,8 +47,15 @@ function extractEnglishBusinessSubject(question: string): string {
   return "business";
 }
 
-export function buildResearchQueries(question: string): string[] {
+export function buildResearchQueries(question: string, context?: DecisionContext): string[] {
   const trimmedQuestion = question.trim();
+
+  const contextTerms = [
+    context?.objective,
+    context?.location,
+    context?.budget,
+    context?.timeframe,
+  ].filter(Boolean).join(" ");
 
   if (!trimmedQuestion) {
     return [];
@@ -60,17 +68,28 @@ export function buildResearchQueries(question: string): string[] {
     ),
   ];
 
-  const location = extractEnglishLocation(trimmedQuestion);
+  const location = context?.location || extractEnglishLocation(trimmedQuestion);
 
   if (location) {
-    const subject = extractEnglishBusinessSubject(trimmedQuestion);
+    const subject =
+      context?.objective || extractEnglishBusinessSubject(trimmedQuestion);
+
+    const contextTerms = [
+      context?.budget,
+      context?.timeframe,
+      ...(context?.constraints ?? []),
+    ]
+      .filter(Boolean)
+      .join(" ");
+
+    const contextSuffix = contextTerms ? ` ${contextTerms}` : "";
 
     queries.push(
-      `${location} ${subject} market demand Bangladesh`,
-      `${location} ${subject} competitors pricing Bangladesh`,
-      `${location} ${subject} startup costs profitability Bangladesh`,
-      `${location} ${subject} regulations licensing Bangladesh`,
-      `${location} tourism seasonality visitor demand business`,
+      `${location} ${subject} market demand Bangladesh${contextSuffix}`,
+      `${location} ${subject} competitors pricing Bangladesh${contextSuffix}`,
+      `${location} ${subject} startup costs profitability Bangladesh${contextSuffix}`,
+      `${location} ${subject} regulations licensing Bangladesh${contextSuffix}`,
+      `${location} tourism seasonality visitor demand business${contextSuffix}`,
     );
   }
 
