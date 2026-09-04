@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import type { DecisionObject } from "@/lib/decision-intelligence";
 
 export type Source = {
   title?: string;
@@ -27,6 +28,7 @@ type Analysis = {
 export type ResearchResult = {
   question?: string;
   analysis?: Analysis;
+  decision?: DecisionObject;
   sources?: Source[];
 };
 
@@ -141,6 +143,13 @@ export default function DecisionBox({
 }) {
   const analysis = result.analysis || {};
   const sources = result.sources || [];
+  const v2Decision = result.decision;
+  const displayDecision = v2Decision?.decision;
+  const decisionFactors = v2Decision?.decision_factors ?? [];
+  const decisionState = displayDecision?.state?.replaceAll("_", " ") ?? "";
+  const decisionScore = Math.max(0, Math.min(100, Math.round(displayDecision?.score ?? 0)));
+  const decisionConfidence = Math.max(0, Math.min(100, Math.round(displayDecision?.confidence ?? 0)));
+  const decisionTitle = displayDecision?.recommendation || analysis.decision || "The research does not support a definitive decision yet.";
   const confidence = Math.max(
     0,
     Math.min(100, Math.round(analysis.confidence ?? 0))
@@ -220,7 +229,35 @@ export default function DecisionBox({
         </div>
       </div>
 
-      {/* EXECUTIVE SUMMARY */}
+      {v2Decision && displayDecision && (
+      <section className="border-b border-zinc-200">
+        <div className="px-6 py-6 lg:px-10">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
+                Decision engine
+              </div>
+              <h2 className="mt-2 text-xl font-semibold tracking-tight text-zinc-950">
+                {decisionTitle}
+              </h2>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-500">
+                {displayDecision.rationale}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-600">
+                {decisionState}
+              </span>
+              <span className="rounded-full bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-700">
+                {decisionScore}/100
+              </span>
+            </div>
+          </div>
+        </div>
+      </section>
+    )}
+
+    {/* EXECUTIVE SUMMARY */}
       <div className="grid border-b border-zinc-200 lg:grid-cols-[1fr_300px]">
         <div className="px-6 py-8 lg:px-10 lg:py-9">
           <div className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-400">

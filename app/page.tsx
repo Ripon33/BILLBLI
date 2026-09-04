@@ -1,7 +1,9 @@
- "use client";
+"use client";
 
 import { FormEvent, useEffect, useState } from "react";
 import DecisionBox from "@/components/DecisionBox";
+import { createHistoryItem, getHistoryPreview } from "@/lib/research-history";
+import { createResearchRequest } from "@/lib/research-request";
 
 type Source = {
   title?: string;
@@ -32,6 +34,7 @@ type HistoryItem = {
   id: string;
   question: string;
   createdAt: string;
+  result: ResearchResult;
 };
 
 const HISTORY_KEY = "billbli-research-history";
@@ -53,12 +56,8 @@ export default function Home() {
     }
   }, []);
 
-  function saveHistory(nextQuestion: string) {
-    const item: HistoryItem = {
-      id: crypto.randomUUID(),
-      question: nextQuestion,
-      createdAt: new Date().toISOString(),
-    };
+  function saveHistory(nextQuestion: string, nextResult: ResearchResult) {
+    const item: HistoryItem = createHistoryItem(nextQuestion, nextResult);
 
     const next = [
       item,
@@ -82,12 +81,14 @@ export default function Home() {
     setResult(null);
 
     try {
+      const researchRequest = createResearchRequest(trimmed);
+
       const response = await fetch("/api/research", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ question: trimmed }),
+        body: JSON.stringify(researchRequest),
       });
 
       const data = await response.json();
@@ -97,7 +98,7 @@ export default function Home() {
       }
 
       setResult(data);
-      saveHistory(trimmed);
+      saveHistory(trimmed, data);
     } catch (err) {
       setError(
         err instanceof Error
@@ -184,7 +185,7 @@ export default function Home() {
                       {item.question}
                     </div>
                     <div className="mt-1 text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-400">
-                      Decision research
+                      {getHistoryPreview(item).decision}
                     </div>
                   </button>
                 ))}
@@ -264,10 +265,12 @@ export default function Home() {
                       rows={4}
                       className="w-full resize-none border-0 bg-transparent px-4 py-3 text-lg outline-none placeholder:text-zinc-300"
                     />
+
                     <div className="flex items-center justify-between border-t border-zinc-100 px-3 pt-3">
                       <span className="text-xs text-zinc-400">
                         Ask a decision, not just a question.
                       </span>
+
                       <button
                         type="submit"
                         disabled={!question.trim()}
@@ -309,6 +312,7 @@ export default function Home() {
                     <div className="mb-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
                       Decision workspace
                     </div>
+
                     <h1 className="max-w-[850px] text-3xl font-bold tracking-[-0.04em] md:text-5xl">
                       {result?.question || question}
                     </h1>

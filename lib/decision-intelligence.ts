@@ -82,6 +82,10 @@ export interface DecisionObject {
   conflicts: DecisionConflict[];
   reassessment_triggers: string[];
   sources: unknown[];
+  language?: {
+    input: string;
+    output: string;
+  };
 }
 
 export function clampScore(value: number): number {

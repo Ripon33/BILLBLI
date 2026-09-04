@@ -1,3 +1,7 @@
+import { buildResearchLanguageInstruction } from "@/lib/research-synthesis";
+import { createResearchLanguageContext } from "@/lib/research-language";
+import { buildResearchQueries } from "@/lib/research-query";
+import { withDecisionLanguage } from "@/lib/multilingual-decision";
 import { NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 import { buildResearchPlan } from "@/lib/research";
@@ -335,7 +339,9 @@ export async function POST(req: Request) {
       );
     }
 
-    const tavilyKey = process.env.TAVILY_API_KEY;
+    const languageContext = createResearchLanguageContext(question);
+
+  const tavilyKey = process.env.TAVILY_API_KEY;
     const geminiKey = process.env.GEMINI_API_KEY;
 
     if (!tavilyKey) {
@@ -362,12 +368,7 @@ export async function POST(req: Request) {
     const plan = buildResearchPlan(question);
 
     // 2. Turn the plan into focused research queries.
-    const queries = [
-      `${question} market demand industry trends`,
-      `${question} competitors pricing business economics`,
-      `${question} customers technology adoption`,
-      `${question} regulation risks challenges latest evidence`,
-    ];
+    const queries = buildResearchQueries(question);
 
     // 3. Search the live web in parallel.
     const searchResults = await Promise.all(
@@ -426,6 +427,8 @@ You are BILLBLI, an evidence-first decision intelligence system.
 
 USER DECISION:
 ${question}
+
+${buildResearchLanguageInstruction(languageContext.language.output)}
 
 RESEARCH PLAN:
 ${JSON.stringify(plan, null, 2)}
@@ -679,6 +682,15 @@ confidence must be an integer from 0 to 100.
     throw new Error(`BILLBLI decision validation failed: ${v2Decision.errors.join("; ")}`);
   }
 
+  const decisionWithLanguage = withDecisionLanguage(
+
+    v2Decision.decision,
+
+    question,
+
+  );
+
+
   // 8. Return the complete BILLBLI research result.
 
     return NextResponse.json({
@@ -686,7 +698,8 @@ confidence must be an integer from 0 to 100.
       question,
       plan,
       analysis,
-      decision: v2Decision.decision,
+      language: languageContext.language,
+      decision: decisionWithLanguage,
       sources: sources.map((source, index) => ({
         id: index + 1,
         title: source.title || "Untitled",
