@@ -198,3 +198,14 @@ describe("multi-intent understanding", () => {
     });
   });
 });
+
+describe("intent priority for mixed decisions", () => {
+  it("prioritizes shopping decisions over study planning when university is context", () => {
+    const result = classifyIntent(
+      "Which laptop should I buy for university? Compare the latest models, prices, and battery life."
+    );
+
+    expect(result.primaryIntent).toBe("decide");
+    expect(result.primaryMode).toBe("shopping");
+  });
+});

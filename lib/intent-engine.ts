@@ -195,8 +195,8 @@ export function classifyIntent(question: string): IntentClassification {
   const intentPriority: Record<DecisionIntent, number> = {
     learn: 100,
     research: 90,
-    plan: 80,
-    solve: 75,
+    plan: 65,
+    solve: 60,
     decide: 70,
   };
 
