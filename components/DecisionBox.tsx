@@ -4,6 +4,7 @@ import {
   getRecommendationLabel,
   getReassessmentItems,
 } from "@/lib/decision-result";
+import { getDecisionDetailItems } from "@/lib/decision-details";
 
 import { useState } from "react";
 import type { DecisionObject } from "@/lib/decision-intelligence";
@@ -41,6 +42,12 @@ export type ResearchResult = {
     why: string[];
     risks: string[];
     tradeoffs: string[];
+  };
+  tradeoffs?: {
+    benefits: string[];
+    risks: string[];
+    tradeoffs: string[];
+    decisionFactors: string[];
   };
   reassessment?: {
     reassessmentTriggers: string[];
@@ -162,6 +169,12 @@ export default function DecisionBox({
   const v2Decision = result.decision;
   const displayDecision = v2Decision?.decision;
   const decisionFactors = v2Decision?.decision_factors ?? [];
+  const decisionDetails = getDecisionDetailItems({
+    benefits: result.tradeoffs?.benefits,
+    risks: result.tradeoffs?.risks,
+    tradeoffs: result.tradeoffs?.tradeoffs,
+    decisionFactors: result.tradeoffs?.decisionFactors,
+  });
   const decisionState = displayDecision?.state?.replaceAll("_", " ") ?? "";
   const decisionScore = Math.max(0, Math.min(100, Math.round(displayDecision?.score ?? 0)));
   const decisionConfidence = Math.max(0, Math.min(100, Math.round(displayDecision?.confidence ?? 0)));
@@ -399,6 +412,38 @@ export default function DecisionBox({
       <div className="border-t border-zinc-200 px-6 lg:px-10">
         <Section
           number="01"
+          label="Benefits"
+          count={decisionDetails.benefits.length}
+        >
+          <SimpleList items={decisionDetails.benefits} />
+        </Section>
+
+        <Section
+          number="02"
+          label="Risks"
+          count={decisionDetails.risks.length}
+        >
+          <SimpleList items={decisionDetails.risks} />
+        </Section>
+
+        <Section
+          number="03"
+          label="Trade-offs"
+          count={decisionDetails.tradeoffs.length}
+        >
+          <SimpleList items={decisionDetails.tradeoffs} />
+        </Section>
+
+        <Section
+          number="04"
+          label="Decision factors"
+          count={decisionDetails.decisionFactors.length}
+        >
+          <SimpleList items={decisionDetails.decisionFactors} />
+        </Section>
+
+        <Section
+          number="05"
           label="Key facts"
           count={analysis.key_facts?.length}
         >
@@ -426,15 +471,7 @@ export default function DecisionBox({
         </Section>
 
         <Section
-          number="02"
-          label="Risks & constraints"
-          count={analysis.risks?.length}
-        >
-          <SimpleList items={analysis.risks} />
-        </Section>
-
-        <Section
-          number="03"
+          number="06"
           label="Assumptions"
           count={analysis.assumptions?.length}
         >
@@ -442,7 +479,7 @@ export default function DecisionBox({
         </Section>
 
         <Section
-          number="04"
+          number="07"
           label="Conflicting evidence"
           count={analysis.conflicts?.length}
         >
