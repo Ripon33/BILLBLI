@@ -75,8 +75,6 @@ describe("decision action plan", () => {
     const result = buildDecisionActionPlan({
       recommendation: "conditional",
       confidence: 72,
-            reassessmentTrigger:
-              "Reassess if the setup cost becomes materially higher than expected.",
       risks: ["High setup cost"],
     });
 
@@ -87,6 +85,8 @@ describe("decision action plan", () => {
           priority: "critical",
           reason: "High setup cost is a material risk to the decision.",
           checkpoint: "Confirm the setup cost remains acceptable for the decision.",
+            reassessmentTrigger:
+              "Reassess if the setup cost becomes materially higher than expected.",
         },
       ],
     });
