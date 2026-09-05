@@ -16,6 +16,7 @@ import { buildDecisionFactors, buildResearchDecision, extractStructuredEvidence 
 import { buildDecisionTradeoffs } from "@/lib/decision-tradeoff";
 import { buildDecisionRecommendation } from "@/lib/decision-recommendation";
 import { buildDecisionReassessment } from "@/lib/decision-reassessment";
+import { buildDecisionActionPlan } from "@/lib/decision-action-plan";
 
 type TavilyResult = {
   title?: string;
@@ -485,6 +486,14 @@ confidence must be an integer from 0 to 100.
     tradeoffs: recommendation.tradeoffs,
   });
 
+  const actionPlan = buildDecisionActionPlan({
+    recommendation: recommendation.recommendation,
+    confidence: recommendation.confidence,
+    decisionFactors: tradeoffResult.decisionFactors,
+    risks: tradeoffResult.risks,
+    tradeoffs: tradeoffResult.tradeoffs,
+  });
+
   const decisionWithLanguage = withDecisionLanguage(
 
     v2Decision.decision,
@@ -506,6 +515,7 @@ confidence must be an integer from 0 to 100.
       tradeoffs: tradeoffResult,
       recommendation,
       reassessment,
+      actionPlan,
       sources: sources.map((source, index) => ({
         id: index + 1,
         title: source.title || "Untitled",

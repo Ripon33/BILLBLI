@@ -53,6 +53,14 @@ export type ResearchResult = {
     reassessmentTriggers: string[];
     whatWouldChange: string[];
   };
+  actionPlan?: {
+    actions: {
+      action: string;
+      priority: "critical" | "important" | "optional";
+      reason: string;
+      checkpoint: string;
+    }[];
+  };
 };
 
 function Section({
@@ -293,6 +301,54 @@ export default function DecisionBox({
               </ul>
             </div>
           )}
+        </section>
+      )}
+
+      {result.actionPlan && result.actionPlan.actions.length > 0 && (
+        <section className="border-b border-zinc-200 px-6 py-7 lg:px-8">
+          <div>
+            <div className="text-[9px] font-semibold uppercase tracking-[0.16em] text-emerald-600">
+              Action plan
+            </div>
+            <h3 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
+              Recommended next actions
+            </h3>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500">
+              Practical next steps grounded in the current decision evidence, risks, and constraints.
+            </p>
+          </div>
+
+          <div className="mt-6 space-y-3">
+            {result.actionPlan.actions.map((item, index) => (
+              <div
+                key={`${item.action}-${index}`}
+                className="rounded-xl border border-zinc-200 bg-zinc-50 p-4"
+              >
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <div className="text-sm font-semibold text-zinc-950">
+                      {item.action}
+                    </div>
+                    <p className="mt-1 text-sm leading-6 text-zinc-600">
+                      {item.reason}
+                    </p>
+                  </div>
+                  <span className="shrink-0 rounded-full border border-zinc-200 bg-white px-3 py-1 text-[9px] font-semibold uppercase tracking-[0.14em] text-zinc-600">
+                    {item.priority}
+                  </span>
+                </div>
+
+                <div className="mt-3 border-t border-zinc-200 pt-3">
+                  <div className="text-[9px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+                    Checkpoint
+                  </div>
+                  <div className="mt-1 text-sm leading-6 text-zinc-600">
+                    {item.checkpoint}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </section>
       )}
 
