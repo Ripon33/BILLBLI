@@ -14,6 +14,7 @@ import { buildResearchPlan } from "@/lib/research";
 import { extractDecisionContext } from "@/lib/decision-context";
 import { buildDecisionFactors, buildResearchDecision, extractStructuredEvidence } from "@/lib/decision-intelligence";
 import { buildDecisionTradeoffs } from "@/lib/decision-tradeoff";
+import { buildDecisionRecommendation } from "@/lib/decision-recommendation";
 
 type TavilyResult = {
   title?: string;
@@ -469,6 +470,13 @@ confidence must be an integer from 0 to 100.
     throw new Error(`BILLBLI decision validation failed: ${v2Decision.errors.join("; ")}`);
   }
 
+  const recommendation = buildDecisionRecommendation({
+    score: v2Decision.decision.decision.score,
+    confidence: v2Decision.decision.decision.confidence,
+    risks: tradeoffResult.risks,
+    tradeoffs: tradeoffResult.tradeoffs,
+  });
+
   const decisionWithLanguage = withDecisionLanguage(
 
     v2Decision.decision,
@@ -488,6 +496,7 @@ confidence must be an integer from 0 to 100.
       language: languageContext.language,
       decision: decisionWithLanguage,
       tradeoffs: tradeoffResult,
+      recommendation,
       sources: sources.map((source, index) => ({
         id: index + 1,
         title: source.title || "Untitled",
