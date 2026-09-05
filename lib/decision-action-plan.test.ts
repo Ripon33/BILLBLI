@@ -25,6 +25,67 @@ describe("decision action plan", () => {
           reason: "Budget is a key decision factor.",
           checkpoint: "Confirm the plan remains within the stated budget.",
         },
+        {
+          action: "Validate location-specific assumptions",
+          priority: "important",
+          reason: "Location is a key decision factor.",
+          checkpoint:
+            "Confirm the decision assumptions remain valid for the stated location.",
+        },
+      ],
+    });
+  });
+
+  it("builds a validation action for a generic material risk", () => {
+    const result = buildDecisionActionPlan({
+      recommendation: "conditional",
+      confidence: 72,
+      risks: ["High setup cost"],
+    });
+
+    expect(result).toEqual({
+      actions: [
+        {
+          action: "Validate setup cost",
+          priority: "critical",
+          reason: "High setup cost is a material risk to the decision.",
+          checkpoint: "Confirm the setup cost remains acceptable for the decision.",
+        },
+      ],
+    });
+  });
+
+  it("asks for stronger evidence when confidence is low", () => {
+    const result = buildDecisionActionPlan({
+      recommendation: "conditional",
+      confidence: 35,
+      risks: ["Regulatory uncertainty"],
+    });
+
+    expect(result.actions).toContainEqual({
+      action: "Gather stronger evidence",
+      priority: "critical",
+      reason: "Low decision confidence means stronger evidence is needed before acting.",
+      checkpoint: "Reassess the decision after materially stronger evidence is available.",
+    });
+  });
+
+  it("builds a validation action for a location decision factor", () => {
+    const result = buildDecisionActionPlan({
+      recommendation: "conditional",
+      confidence: 72,
+      decisionFactors: ["Location: Cox's Bazar"],
+    });
+
+    expect(result).toEqual({
+      actions: [
+        {
+          action: "Validate location-specific assumptions",
+          priority: "important",
+          reason: "Location is a key decision factor.",
+          checkpoint:
+            "Confirm the decision assumptions remain valid for the stated location.",
+        },
       ],
     });
   });
@@ -33,6 +94,9 @@ describe("decision action plan", () => {
     const result = buildDecisionActionPlan({
       recommendation: "conditional",
       confidence: 35,
+      decisionFactors: [],
+      risks: [],
+      tradeoffs: [],
     });
 
     expect(result).toEqual({
