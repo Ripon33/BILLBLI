@@ -89,6 +89,33 @@ export function buildDecisionActionPlan(
     }
   }
 
+  for (const tradeoff of input.tradeoffs ?? []) {
+    if (/higher investment versus stronger quality/i.test(tradeoff)) {
+      actions.push({
+        action:
+          "Validate whether the quality gain justifies the additional investment",
+        priority: "important",
+        reason:
+          "The investment versus quality trade-off is material to the decision.",
+        checkpoint:
+          "Confirm the expected quality gain is sufficient to justify the additional investment.",
+      });
+      continue;
+    }
+
+    if (/lower cost versus lower reliability/i.test(tradeoff)) {
+      actions.push({
+        action: "Validate whether the reliability trade-off is acceptable",
+        priority: "important",
+        reason:
+          "The cost versus reliability trade-off is material to the decision.",
+        checkpoint:
+          "Confirm the lower reliability remains acceptable for the expected cost savings.",
+      });
+      continue;
+    }
+  }
+
   for (const factor of input.decisionFactors ?? []) {
     if (/^Budget:/i.test(factor)) {
       actions.push({

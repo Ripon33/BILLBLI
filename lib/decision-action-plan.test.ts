@@ -20,6 +20,15 @@ describe("decision action plan", () => {
           checkpoint: "Confirm demand remains strong enough to support the decision.",
         },
         {
+          action:
+            "Validate whether the quality gain justifies the additional investment",
+          priority: "important",
+          reason:
+            "The investment versus quality trade-off is material to the decision.",
+          checkpoint:
+            "Confirm the expected quality gain is sufficient to justify the additional investment.",
+        },
+        {
           action: "Validate the decision budget",
           priority: "important",
           reason: "Budget is a key decision factor.",
@@ -70,6 +79,49 @@ describe("decision action plan", () => {
           reason: "High setup cost is a material risk to the decision.",
           checkpoint:
             "Confirm the setup cost remains acceptable for the decision.",
+        },
+      ],
+    });
+  });
+
+  it("builds an action for a meaningful investment versus quality trade-off", () => {
+    const result = buildDecisionActionPlan({
+      recommendation: "conditional",
+      confidence: 72,
+      tradeoffs: ["Higher investment versus stronger quality"],
+    });
+
+    expect(result).toEqual({
+      actions: [
+        {
+          action:
+            "Validate whether the quality gain justifies the additional investment",
+          priority: "important",
+          reason:
+            "The investment versus quality trade-off is material to the decision.",
+          checkpoint:
+            "Confirm the expected quality gain is sufficient to justify the additional investment.",
+        },
+      ],
+    });
+  });
+
+  it("builds an action for a cost versus reliability trade-off", () => {
+    const result = buildDecisionActionPlan({
+      recommendation: "conditional",
+      confidence: 72,
+      tradeoffs: ["Lower cost versus lower reliability"],
+    });
+
+    expect(result).toEqual({
+      actions: [
+        {
+          action: "Validate whether the reliability trade-off is acceptable",
+          priority: "important",
+          reason:
+            "The cost versus reliability trade-off is material to the decision.",
+          checkpoint:
+            "Confirm the lower reliability remains acceptable for the expected cost savings.",
         },
       ],
     });
@@ -127,6 +179,18 @@ describe("decision action plan", () => {
             "Confirm the decision assumptions remain valid for the stated location.",
         },
       ],
+    });
+  });
+
+  it("does not invent actions for an unsupported trade-off", () => {
+    const result = buildDecisionActionPlan({
+      recommendation: "conditional",
+      confidence: 72,
+      tradeoffs: ["Something may be better but could also be different"],
+    });
+
+    expect(result).toEqual({
+      actions: [],
     });
   });
 
