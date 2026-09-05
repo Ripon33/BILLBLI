@@ -13,6 +13,7 @@ export interface DecisionAction {
   priority: ActionPriority;
   reason: string;
   checkpoint: string;
+  reassessmentTrigger?: string;
 }
 
 export interface DecisionActionPlan {
@@ -59,9 +60,24 @@ export function buildDecisionActionPlan(
         reason: `${risk} is a material risk to the decision.`,
         checkpoint:
           "Confirm the setup cost remains acceptable for the decision.",
+          reassessmentTrigger:
+            "Reassess if the setup cost becomes materially higher than expected.",
       });
       continue;
     }
+
+      if (/high setup cost/i.test(risk)) {
+        actions.push({
+          action: "Validate setup cost",
+          priority: "critical",
+          reason: "High setup cost is a material risk to the decision.",
+          checkpoint:
+            "Confirm the setup cost remains acceptable for the decision.",
+          reassessmentTrigger:
+            "Reassess if the setup cost becomes materially higher than expected.",
+        });
+        continue;
+      }
 
     if (/seasonal demand/i.test(risk)) {
       actions.push({
@@ -70,6 +86,8 @@ export function buildDecisionActionPlan(
         reason: "Seasonal demand is a material risk to the decision.",
         checkpoint:
           "Confirm demand remains strong enough to support the decision.",
+        reassessmentTrigger:
+          "Reassess if seasonal demand materially weakens.",
       });
       continue;
     }
@@ -85,6 +103,7 @@ export function buildDecisionActionPlan(
         priority: "critical",
         reason: `${risk} is a material risk to the decision.`,
         checkpoint: `Confirm the ${normalizedRisk.toLowerCase()} remains acceptable for the decision.`,
+        reassessmentTrigger: `Reassess if the ${normalizedRisk.toLowerCase()} becomes materially worse.`,
       });
     }
   }
@@ -99,6 +118,8 @@ export function buildDecisionActionPlan(
           "The investment versus quality trade-off is material to the decision.",
         checkpoint:
           "Confirm the expected quality gain is sufficient to justify the additional investment.",
+        reassessmentTrigger:
+          "Reassess if the quality gain no longer justifies the additional investment.",
       });
       continue;
     }
@@ -111,6 +132,8 @@ export function buildDecisionActionPlan(
           "The cost versus reliability trade-off is material to the decision.",
         checkpoint:
           "Confirm the lower reliability remains acceptable for the expected cost savings.",
+        reassessmentTrigger:
+          "Reassess if the lower reliability becomes unacceptable for the decision.",
       });
       continue;
     }

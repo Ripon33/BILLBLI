@@ -18,6 +18,8 @@ describe("decision action plan", () => {
           priority: "critical",
           reason: "Seasonal demand is a material risk to the decision.",
           checkpoint: "Confirm demand remains strong enough to support the decision.",
+          reassessmentTrigger:
+            "Reassess if seasonal demand materially weakens.",
         },
         {
           action:
@@ -27,6 +29,8 @@ describe("decision action plan", () => {
             "The investment versus quality trade-off is material to the decision.",
           checkpoint:
             "Confirm the expected quality gain is sufficient to justify the additional investment.",
+          reassessmentTrigger:
+            "Reassess if the quality gain no longer justifies the additional investment.",
         },
         {
           action: "Validate the decision budget",
@@ -45,10 +49,34 @@ describe("decision action plan", () => {
     });
   });
 
+  it("adds a reassessment trigger to a seasonal demand action", () => {
+    const result = buildDecisionActionPlan({
+      recommendation: "conditional",
+      confidence: 72,
+      risks: ["Seasonal demand"],
+    });
+
+    expect(result).toEqual({
+      actions: [
+        {
+          action: "Validate seasonal demand",
+          priority: "critical",
+          reason: "Seasonal demand is a material risk to the decision.",
+          checkpoint:
+            "Confirm demand remains strong enough to support the decision.",
+          reassessmentTrigger:
+            "Reassess if seasonal demand materially weakens.",
+        },
+      ],
+    });
+  });
+
   it("builds a validation action for a generic material risk", () => {
     const result = buildDecisionActionPlan({
       recommendation: "conditional",
       confidence: 72,
+            reassessmentTrigger:
+              "Reassess if the setup cost becomes materially higher than expected.",
       risks: ["High setup cost"],
     });
 
@@ -59,6 +87,28 @@ describe("decision action plan", () => {
           priority: "critical",
           reason: "High setup cost is a material risk to the decision.",
           checkpoint: "Confirm the setup cost remains acceptable for the decision.",
+        },
+      ],
+    });
+  });
+
+  it("adds a generic reassessment trigger to a material risk action", () => {
+    const result = buildDecisionActionPlan({
+      recommendation: "conditional",
+      confidence: 72,
+      risks: ["Major supplier delay risk"],
+    });
+
+    expect(result).toEqual({
+      actions: [
+        {
+          action: "Validate supplier delay",
+          priority: "critical",
+          reason: "Major supplier delay risk is a material risk to the decision.",
+          checkpoint:
+            "Confirm the supplier delay remains acceptable for the decision.",
+          reassessmentTrigger:
+            "Reassess if the supplier delay becomes materially worse.",
         },
       ],
     });
@@ -79,6 +129,30 @@ describe("decision action plan", () => {
           reason: "High setup cost is a material risk to the decision.",
           checkpoint:
             "Confirm the setup cost remains acceptable for the decision.",
+            reassessmentTrigger:
+              "Reassess if the setup cost becomes materially higher than expected.",
+        },
+      ],
+    });
+  });
+
+  it("adds a reassessment trigger to a high setup cost action", () => {
+    const result = buildDecisionActionPlan({
+      recommendation: "conditional",
+      confidence: 72,
+      risks: ["High setup cost"],
+    });
+
+    expect(result).toEqual({
+      actions: [
+        {
+          action: "Validate setup cost",
+          priority: "critical",
+          reason: "High setup cost is a material risk to the decision.",
+          checkpoint:
+            "Confirm the setup cost remains acceptable for the decision.",
+          reassessmentTrigger:
+            "Reassess if the setup cost becomes materially higher than expected.",
         },
       ],
     });
@@ -101,6 +175,55 @@ describe("decision action plan", () => {
             "The investment versus quality trade-off is material to the decision.",
           checkpoint:
             "Confirm the expected quality gain is sufficient to justify the additional investment.",
+          reassessmentTrigger:
+            "Reassess if the quality gain no longer justifies the additional investment.",
+        },
+      ],
+    });
+  });
+
+  it("adds a reassessment trigger to a trade-off action", () => {
+    const result = buildDecisionActionPlan({
+      recommendation: "conditional",
+      confidence: 72,
+      tradeoffs: ["Higher investment versus stronger quality"],
+    });
+
+    expect(result).toEqual({
+      actions: [
+        {
+          action:
+            "Validate whether the quality gain justifies the additional investment",
+          priority: "important",
+          reason:
+            "The investment versus quality trade-off is material to the decision.",
+          checkpoint:
+            "Confirm the expected quality gain is sufficient to justify the additional investment.",
+          reassessmentTrigger:
+            "Reassess if the quality gain no longer justifies the additional investment.",
+        },
+      ],
+    });
+  });
+
+  it("adds a reassessment trigger to a cost versus reliability trade-off", () => {
+    const result = buildDecisionActionPlan({
+      recommendation: "conditional",
+      confidence: 72,
+      tradeoffs: ["Lower cost versus lower reliability"],
+    });
+
+    expect(result).toEqual({
+      actions: [
+        {
+          action: "Validate whether the reliability trade-off is acceptable",
+          priority: "important",
+          reason:
+            "The cost versus reliability trade-off is material to the decision.",
+          checkpoint:
+            "Confirm the lower reliability remains acceptable for the expected cost savings.",
+          reassessmentTrigger:
+            "Reassess if the lower reliability becomes unacceptable for the decision.",
         },
       ],
     });
@@ -122,6 +245,8 @@ describe("decision action plan", () => {
             "The cost versus reliability trade-off is material to the decision.",
           checkpoint:
             "Confirm the lower reliability remains acceptable for the expected cost savings.",
+          reassessmentTrigger:
+            "Reassess if the lower reliability becomes unacceptable for the decision.",
         },
       ],
     });
