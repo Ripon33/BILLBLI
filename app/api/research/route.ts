@@ -1,4 +1,5 @@
 import { rankEvidenceSources } from "@/lib/evidence-ranking";
+import { buildResearchResultProvenance, buildGroundedClaimsFromResearchAnalysis } from "@/lib/evidence-provenance";
 import { classifyIntent } from "@/lib/intent-engine";
 import { getAnswerRoute } from "@/lib/answer-routing";
 import { createStudyResponse } from "@/lib/study-response";
@@ -448,6 +449,17 @@ confidence must be an integer from 0 to 100.
     }
 
     // 7. Build the validated V2 decision object from researched sources.
+  const provenanceBase = buildResearchResultProvenance(sources);
+  const groundedProvenance = buildGroundedClaimsFromResearchAnalysis(
+    analysis,
+    provenanceBase,
+  );
+  const provenance = buildResearchResultProvenance(
+    sources,
+    groundedProvenance.claims,
+    groundedProvenance.links,
+  );
+
   const v2Sources = sources.map((source, index) => ({
     id: `source-${index + 1}`,
     text: source.content || "",
@@ -516,6 +528,7 @@ confidence must be an integer from 0 to 100.
       recommendation,
       reassessment,
       actionPlan,
+      provenance,
       sources: sources.map((source, index) => ({
         id: index + 1,
         title: source.title || "Untitled",
