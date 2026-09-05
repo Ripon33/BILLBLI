@@ -41,6 +41,28 @@ export function buildDecisionActionPlan(
   }
 
   for (const risk of input.risks ?? []) {
+    if (/regulatory uncertainty/i.test(risk)) {
+      actions.push({
+        action: "Verify applicable licensing requirements",
+        priority: "critical",
+        reason: `${risk} is a material risk to the decision.`,
+        checkpoint:
+          "Confirm the applicable licensing requirements before acting on the decision.",
+      });
+      continue;
+    }
+
+    if (/high setup cost/i.test(risk)) {
+      actions.push({
+        action: "Validate setup cost",
+        priority: "critical",
+        reason: `${risk} is a material risk to the decision.`,
+        checkpoint:
+          "Confirm the setup cost remains acceptable for the decision.",
+      });
+      continue;
+    }
+
     if (/seasonal demand/i.test(risk)) {
       actions.push({
         action: "Validate seasonal demand",

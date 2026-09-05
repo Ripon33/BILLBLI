@@ -55,6 +55,46 @@ describe("decision action plan", () => {
     });
   });
 
+  it("builds a validation action for high setup cost", () => {
+    const result = buildDecisionActionPlan({
+      recommendation: "conditional",
+      confidence: 72,
+      risks: ["High setup cost"],
+    });
+
+    expect(result).toEqual({
+      actions: [
+        {
+          action: "Validate setup cost",
+          priority: "critical",
+          reason: "High setup cost is a material risk to the decision.",
+          checkpoint:
+            "Confirm the setup cost remains acceptable for the decision.",
+        },
+      ],
+    });
+  });
+
+  it("builds a verification action for regulatory uncertainty", () => {
+    const result = buildDecisionActionPlan({
+      recommendation: "conditional",
+      confidence: 72,
+      risks: ["Regulatory uncertainty"],
+    });
+
+    expect(result).toEqual({
+      actions: [
+        {
+          action: "Verify applicable licensing requirements",
+          priority: "critical",
+          reason: "Regulatory uncertainty is a material risk to the decision.",
+          checkpoint:
+            "Confirm the applicable licensing requirements before acting on the decision.",
+        },
+      ],
+    });
+  });
+
   it("asks for stronger evidence when confidence is low", () => {
     const result = buildDecisionActionPlan({
       recommendation: "conditional",
