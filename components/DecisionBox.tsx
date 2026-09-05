@@ -1,5 +1,10 @@
 "use client";
 
+import {
+  getRecommendationLabel,
+  getReassessmentItems,
+} from "@/lib/decision-result";
+
 import { useState } from "react";
 import type { DecisionObject } from "@/lib/decision-intelligence";
 
@@ -30,6 +35,17 @@ export type ResearchResult = {
   analysis?: Analysis;
   decision?: DecisionObject;
   sources?: Source[];
+  recommendation?: {
+    recommendation: "proceed" | "do_not_proceed" | "conditional";
+    confidence: number;
+    why: string[];
+    risks: string[];
+    tradeoffs: string[];
+  };
+  reassessment?: {
+    reassessmentTriggers: string[];
+    whatWouldChange: string[];
+  };
 };
 
 function Section({
@@ -229,6 +245,44 @@ export default function DecisionBox({
         </div>
       </div>
 
+      {result.recommendation && (
+        <section className="border-b border-zinc-200 px-6 py-7 lg:px-8">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <div className="text-[9px] font-semibold uppercase tracking-[0.16em] text-emerald-600">
+                BILLBLI recommendation
+              </div>
+              <h3 className="mt-2 text-2xl font-semibold tracking-tight text-zinc-950">
+                {getRecommendationLabel(result.recommendation.recommendation)}
+              </h3>
+            </div>
+
+            <div className="rounded-xl bg-zinc-50 px-4 py-3 sm:text-right">
+              <div className="text-[9px] font-semibold uppercase tracking-[0.14em] text-zinc-500">
+                Recommendation confidence
+              </div>
+              <div className="mt-1 text-2xl font-semibold text-zinc-950">
+                {result.recommendation.confidence}%
+              </div>
+            </div>
+          </div>
+
+          {result.recommendation.why.length > 0 && (
+            <div className="mt-5">
+              <div className="text-sm font-semibold text-zinc-900">Why</div>
+              <ul className="mt-2 space-y-2 text-sm leading-6 text-zinc-600">
+                {result.recommendation.why.map((item, index) => (
+                  <li key={`${item}-${index}`} className="flex gap-2">
+                    <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </section>
+      )}
+
       {v2Decision && displayDecision && (
       <section className="border-b border-zinc-200">
         <div className="px-6 py-6 lg:px-10">
@@ -414,11 +468,16 @@ export default function DecisionBox({
         </div>
 
         <div className="grid gap-3 md:grid-cols-2">
-          {analysis.what_would_change_the_decision?.length ? (
-            analysis.what_would_change_the_decision.map(
-              (item, index) => (
+          {(() => {
+            const reassessmentItems = getReassessmentItems(
+              result.reassessment,
+              analysis.what_would_change_the_decision,
+            );
+
+            return reassessmentItems.length ? (
+              reassessmentItems.map((item, index) => (
                 <div
-                  key={index}
+                  key={`${item}-${index}`}
                   className="rounded-xl border border-zinc-200 bg-white p-5"
                 >
                   <div className="mb-3 font-mono text-[10px] text-zinc-400">
@@ -429,13 +488,13 @@ export default function DecisionBox({
                     {item}
                   </p>
                 </div>
-              )
-            )
-          ) : (
-            <p className="text-sm text-zinc-400">
-              No reassessment triggers listed.
-            </p>
-          )}
+              ))
+            ) : (
+              <p className="text-sm text-zinc-400">
+                No reassessment triggers listed.
+              </p>
+            );
+          })()}
         </div>
       </div>
 
