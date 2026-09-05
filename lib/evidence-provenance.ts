@@ -213,6 +213,7 @@ export type ProvenanceGraph = {
   claims: Claim[];
   links: ClaimEvidenceLink[];
   conflicts: DecisionConflict[];
+  coverage?: EvidenceCoverage;
 };
 
 export type EvidenceCoverage = {
@@ -412,10 +413,15 @@ export function buildResearchResultProvenance(
   links: ClaimEvidenceLink[] = [],
   conflicts: DecisionConflict[] = [],
 ): ProvenanceGraph {
-  return buildProvenanceGraphFromRankedSources(
+  const graph = buildProvenanceGraphFromRankedSources(
     rankedSources,
     claims,
     links,
     conflicts,
   );
+
+  return {
+    ...graph,
+    coverage: calculateEvidenceCoverage(graph),
+  };
 }

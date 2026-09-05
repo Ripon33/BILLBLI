@@ -2076,3 +2076,118 @@ describe("research analysis provenance integration", () => {
     ]);
   });
 });
+
+describe("research analysis provenance grounding", () => {
+  it("maps source numbers from analysis claims to the corresponding evidence IDs", () => {
+    const graph = buildResearchResultProvenance([
+      {
+        title: "Source One",
+        content: "Evidence from source one",
+        url: "https://example.com/one",
+        authority: { score: 90, type: "official" },
+        relevance_score: 95,
+        directness_score: 90,
+        evidence_score: 92,
+      },
+      {
+        title: "Source Two",
+        content: "Evidence from source two",
+        url: "https://example.com/two",
+        authority: { score: 85, type: "official" },
+        relevance_score: 88,
+        directness_score: 86,
+        evidence_score: 87,
+      },
+    ]);
+
+    const result = buildGroundedClaimsFromResearchAnalysis(
+      {
+        key_facts: [
+          {
+            fact: "Both sources support the same fact.",
+            sources: [1, 2],
+          },
+        ],
+      },
+      graph,
+    );
+
+    expect(result.claims).toEqual([
+      {
+        claimId: "claim-1",
+        text: "Both sources support the same fact.",
+        evidenceIds: ["evidence-source-1", "evidence-source-2"],
+      },
+    ]);
+
+    expect(result.links).toEqual([
+      {
+        claimId: "claim-1",
+        evidenceId: "evidence-source-1",
+        relationship: "supports",
+        relevance: 100,
+      },
+      {
+        claimId: "claim-1",
+        evidenceId: "evidence-source-2",
+        relationship: "supports",
+        relevance: 100,
+      },
+    ]);
+  });
+});
+
+describe("research provenance coverage integration", () => {
+  it("exposes coverage for grounded and unsupported claims", () => {
+    const graph = buildResearchResultProvenance([
+      {
+        title: "Source One",
+        content: "Evidence from source one",
+        url: "https://example.com/one",
+        authority: { score: 90, type: "official" },
+        relevance_score: 95,
+        directness_score: 90,
+        evidence_score: 92,
+      },
+    ]);
+
+    const grounded = buildGroundedClaimsFromResearchAnalysis(
+      {
+        key_facts: [
+          {
+            fact: "Grounded fact.",
+            sources: [1],
+          },
+          {
+            fact: "Unsupported fact.",
+            sources: [],
+          },
+        ],
+      },
+      graph,
+    );
+
+    const result = buildResearchResultProvenance(
+      [
+        {
+          title: "Source One",
+          content: "Evidence from source one",
+          url: "https://example.com/one",
+          authority: { score: 90, type: "official" },
+          relevance_score: 95,
+          directness_score: 90,
+          evidence_score: 92,
+        },
+      ],
+      grounded.claims,
+      grounded.links,
+    );
+
+    expect(result.coverage).toEqual({
+      totalClaims: 2,
+      groundedClaims: 1,
+      coverage: 0.5,
+      status: "partially_grounded",
+    });
+  });
+});
