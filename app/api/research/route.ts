@@ -13,6 +13,7 @@ import { GoogleGenAI } from "@google/genai";
 import { buildResearchPlan } from "@/lib/research";
 import { extractDecisionContext } from "@/lib/decision-context";
 import { buildDecisionFactors, buildResearchDecision, extractStructuredEvidence } from "@/lib/decision-intelligence";
+import { buildDecisionTradeoffs } from "@/lib/decision-tradeoff";
 
 type TavilyResult = {
   title?: string;
@@ -453,6 +454,8 @@ confidence must be an integer from 0 to 100.
 
   const v2Evidence = extractStructuredEvidence(v2Sources);
 
+  const tradeoffResult = buildDecisionTradeoffs(decisionContext, sources);
+
   const v2Factors = buildDecisionFactors(v2Evidence);
 
   const v2Decision = buildResearchDecision({
@@ -484,6 +487,7 @@ confidence must be an integer from 0 to 100.
       analysis,
       language: languageContext.language,
       decision: decisionWithLanguage,
+      tradeoffs: tradeoffResult,
       sources: sources.map((source, index) => ({
         id: index + 1,
         title: source.title || "Untitled",
