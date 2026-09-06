@@ -29,6 +29,14 @@ describe("research language context", () => {
     });
   });
 
+  it("honors an explicit output-language request in Romanized input", () => {
+    const context = createResearchLanguageContext(
+      "ami keno onno platform chere billbli use korbo? write in bangla language"
+    );
+
+    expect(context.language.output).toBe("bn");
+  });
+
   it("supports mixed Bangla and English input", () => {
     const context = createResearchLanguageContext(
       "বাংলাদেশে কোন business শুরু করা ভালো?"

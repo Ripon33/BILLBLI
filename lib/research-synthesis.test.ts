@@ -23,6 +23,13 @@ describe("research synthesis language instruction", () => {
     expect(instruction).toContain("Respond entirely");
   });
 
+  it("keeps the explicit Romanized Bangla request on the research output path", () => {
+    const instruction = buildResearchLanguageInstruction("bn");
+
+    expect(instruction).toContain("Respond entirely in Bangla");
+    expect(instruction).toContain("Do not switch to English");
+  });
+
   it("preserves source titles, URLs, and direct quotes when necessary", () => {
     const instruction = buildResearchLanguageInstruction("bn");
 

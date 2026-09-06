@@ -62,6 +62,31 @@ describe("POST /api/research prompt-injection boundary", () => {
     );
   });
 
+  it("sends the requested output language to Gemini for Romanized input", async () => {
+    const { POST } = await import("./route");
+
+    const request = new Request("http://localhost/api/research", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-forwarded-for": "203.0.113.201",
+      },
+      body: JSON.stringify({
+        question:
+          "ami keno onno platform chere billbli use korbo? write in bangla language",
+      }),
+    });
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(200);
+    expect(generateContent).toHaveBeenCalled();
+
+    const call = generateContent.mock.calls[0][0];
+
+    expect(call.contents).toContain("The user's requested output language is: bn");
+  });
+
   it("marks live web research content as untrusted before sending it to Gemini", async () => {
     const classification = classifyIntent("Should I choose option A?");
     const answerRoute = getAnswerRoute(

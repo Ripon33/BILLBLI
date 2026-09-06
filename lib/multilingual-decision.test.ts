@@ -60,3 +60,46 @@ describe("decision language metadata", () => {
     });
   });
 });
+
+  it("uses an explicit output-language request for Romanized input", () => {
+    const context = createDecisionLanguageContext(
+      "ami keno onno platform chere billbli use korbo? write in bangla language",
+    );
+
+    expect(context.outputLanguage).toBe("bn");
+  });
+
+  it("detects explicit output-language requests across all supported languages", () => {
+    const cases = [
+      ["please write in English", "en"],
+      ["please write in Bangla", "bn"],
+      ["please write in Arabic", "ar"],
+      ["please write in Hindi", "hi"],
+      ["please write in Urdu", "ur"],
+      ["please write in Persian", "fa"],
+      ["please write in Hebrew", "he"],
+      ["please write in Chinese", "zh"],
+      ["please write in Japanese", "ja"],
+      ["please write in Korean", "ko"],
+      ["please write in Russian", "ru"],
+      ["please write in Thai", "th"],
+      ["please write in Vietnamese", "vi"],
+      ["please write in Turkish", "tr"],
+      ["please write in Spanish", "es"],
+      ["please write in French", "fr"],
+      ["please write in German", "de"],
+      ["please write in Portuguese", "pt"],
+      ["please write in Italian", "it"],
+      ["please write in Dutch", "nl"],
+      ["please write in Polish", "pl"],
+      ["please write in Ukrainian", "uk"],
+      ["please write in Indonesian", "id"],
+      ["please write in Malay", "ms"],
+    ] as const;
+
+    for (const [question, expectedLanguage] of cases) {
+      const context = createDecisionLanguageContext(question);
+
+      expect(context.outputLanguage).toBe(expectedLanguage);
+    }
+  });

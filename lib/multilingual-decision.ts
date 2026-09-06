@@ -47,6 +47,63 @@ function countMatches(text: string, pattern: RegExp): number {
 }
 
 /**
+ * Detects an explicit output-language request in natural-language input.
+ *
+ * Explicit requests take precedence over automatic script detection.
+ * This is especially important for Romanized languages and mixed-language
+ * questions where the requested response language may not match the script
+ * used in the question.
+ */
+function detectExplicitOutputLanguage(text: string): DecisionLanguage | null {
+  const input = text.toLowerCase();
+
+  const languageNames: Array<[DecisionLanguage, string[]]> = [
+    ["en", ["english"]],
+    ["bn", ["bangla", "bengali"]],
+    ["ar", ["arabic"]],
+    ["hi", ["hindi"]],
+    ["ur", ["urdu"]],
+    ["fa", ["persian", "farsi"]],
+    ["he", ["hebrew"]],
+    ["zh", ["chinese", "mandarin"]],
+    ["ja", ["japanese"]],
+    ["ko", ["korean"]],
+    ["ru", ["russian"]],
+    ["th", ["thai"]],
+    ["vi", ["vietnamese"]],
+    ["tr", ["turkish"]],
+    ["es", ["spanish"]],
+    ["fr", ["french"]],
+    ["de", ["german"]],
+    ["pt", ["portuguese"]],
+    ["it", ["italian"]],
+    ["nl", ["dutch"]],
+    ["pl", ["polish"]],
+    ["uk", ["ukrainian"]],
+    ["id", ["indonesian"]],
+    ["ms", ["malay"]],
+  ];
+
+  for (const [language, names] of languageNames) {
+    for (const name of names) {
+      const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+      const pattern = new RegExp(
+        `\\b(?:write|respond|reply|answer|explain|speak)\\s+(?:in\\s+)?${escapedName}\\b|` +
+        `\\b(?:write|respond|reply|answer|explain|speak)\\s+(?:the\\s+)?${escapedName}\\b|` +
+        `\\b(?:in|using)\\s+(?:the\\s+)?${escapedName}\\b`,
+        "i",
+      );
+
+      if (pattern.test(input)) {
+        return language;
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
  * Detects the dominant language/script for a decision input.
  *
  * This is intentionally deterministic and dependency-free.
@@ -58,6 +115,11 @@ export function detectDecisionLanguage(text: string): DecisionLanguage {
 
   if (!input) {
     return "auto";
+  }
+
+  const explicitOutputLanguage = detectExplicitOutputLanguage(input);
+  if (explicitOutputLanguage) {
+    return explicitOutputLanguage;
   }
 
   // Prefer a meaningful non-Latin script over incidental English
