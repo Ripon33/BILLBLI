@@ -34,6 +34,7 @@ import {
   downloadResearchPdf,
   downloadStudyPdf,
 } from "@/lib/result-pdf-download";
+import { deleteCurrentResult } from "@/lib/current-result-delete";
 
 type Source = {
   title?: string;
@@ -216,6 +217,51 @@ export default function Home() {
     setResult(null);
     setError("");
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function handleDeleteCurrentResult() {
+    if (!result) return;
+
+    if ("type" in result && result.type === "study") {
+      const current = studyHistory.find(
+        (item) => item.question.toLowerCase() === question.toLowerCase(),
+      );
+
+      if (!current) return;
+
+      const next = deleteCurrentResult({
+        route: "study",
+        id: current.id,
+        history: [],
+        studyHistory,
+        storage: localStorage,
+      });
+
+      setStudyHistory(next.studyHistory);
+      setResult(null);
+      setQuestion("");
+      setError("");
+      return;
+    }
+
+    const current = history.find(
+      (item) => item.question.toLowerCase() === question.toLowerCase(),
+    );
+
+    if (!current) return;
+
+    const next = deleteCurrentResult({
+      route: "research",
+      id: current.id,
+      history,
+      studyHistory: [],
+      storage: localStorage,
+    });
+
+    setHistory(next.history);
+    setResult(null);
+    setQuestion("");
+    setError("");
   }
 
   function loadHistory(item: HistoryItem) {
@@ -530,7 +576,7 @@ export default function Home() {
                       }
                       onShare={handleShare}
                       onPrint={handlePrint}
-                      onDelete={() => {}}
+                      onDelete={handleDeleteCurrentResult}
                       onCopy={() => {}}
                     />
                   </>
@@ -544,7 +590,7 @@ export default function Home() {
                       }
                       onShare={handleShare}
                       onPrint={handlePrint}
-                      onDelete={() => {}}
+                      onDelete={handleDeleteCurrentResult}
                       onCopy={() => {}}
                     />
                   </>
