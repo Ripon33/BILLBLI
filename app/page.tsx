@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import DecisionBox from "@/components/DecisionBox";
 import StudyBox from "@/components/StudyBox";
 import type { StudyResponse } from "@/lib/study-response";
-import { createHistoryItem, getHistoryPreview } from "@/lib/research-history";
+import { createHistoryItem, getHistoryPreview, parseHistory } from "@/lib/research-history";
 import { createResearchRequest } from "@/lib/research-request";
 import { classifyIntent } from "@/lib/intent-engine";
 import { getAnswerRoute } from "@/lib/answer-routing";
@@ -57,7 +57,7 @@ export default function Home() {
   useEffect(() => {
     try {
       const saved = localStorage.getItem(HISTORY_KEY);
-      if (saved) setHistory(JSON.parse(saved));
+      if (saved) setHistory(parseHistory<ResearchResult>(saved));
     } catch {
       // Ignore malformed local history.
     }
