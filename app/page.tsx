@@ -35,6 +35,7 @@ import {
   downloadStudyPdf,
 } from "@/lib/result-pdf-download";
 import { deleteCurrentResult } from "@/lib/current-result-delete";
+import { copyResult } from "@/lib/result-copy";
 
 type Source = {
   title?: string;
@@ -114,6 +115,19 @@ export default function Home() {
       text,
       shareResult,
     )();
+  }
+
+  async function handleCopy() {
+    if (!result) return;
+
+    if ("type" in result && result.type === "study") {
+      await copyResult(getStudyShareContent(question, result));
+      return;
+    }
+
+    await copyResult(
+      getResearchShareContent(question, result as ResearchResult),
+    );
   }
 
   useEffect(() => {
@@ -577,7 +591,7 @@ export default function Home() {
                       onShare={handleShare}
                       onPrint={handlePrint}
                       onDelete={handleDeleteCurrentResult}
-                      onCopy={() => {}}
+                      onCopy={handleCopy}
                     />
                   </>
                 ) : (
@@ -591,7 +605,7 @@ export default function Home() {
                       onShare={handleShare}
                       onPrint={handlePrint}
                       onDelete={handleDeleteCurrentResult}
-                      onCopy={() => {}}
+                      onCopy={handleCopy}
                     />
                   </>
                 )}
