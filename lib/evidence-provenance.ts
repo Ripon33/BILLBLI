@@ -163,6 +163,44 @@ export function buildClaimEvidenceLink(
   };
 }
 
+export function buildDecisionConflicts(
+  graph: ProvenanceGraph,
+): DecisionConflict[] {
+  const conflicts: DecisionConflict[] = [];
+
+  for (const claim of graph.claims) {
+    const claimLinks = graph.links.filter(
+      (link) => link.claimId === claim.claimId,
+    );
+
+    const hasSupportingEvidence = claimLinks.some(
+      (link) => link.relationship === "supports",
+    );
+    const hasContradictoryEvidence = claimLinks.some(
+      (link) => link.relationship === "contradicts",
+    );
+
+    if (hasSupportingEvidence && hasContradictoryEvidence) {
+      conflicts.push({
+        id: `conflict-${claim.claimId}`,
+        claim_ids: [claim.claimId],
+        evidence_ids: claimLinks
+          .filter(
+            (link) =>
+              link.relationship === "supports" ||
+              link.relationship === "contradicts",
+          )
+          .map((link) => link.evidenceId),
+        severity: "material",
+        explanation:
+          `Claim ${claim.claimId} has both supporting and contradictory evidence.`,
+      });
+    }
+  }
+
+  return conflicts;
+}
+
 export function validateClaimEvidenceLinks(
   claim: Claim,
   links: ClaimEvidenceLink[],
@@ -420,8 +458,11 @@ export function buildResearchResultProvenance(
     conflicts,
   );
 
+  const conflictsFromClaims = buildDecisionConflicts(graph);
+
   return {
     ...graph,
+    conflicts: conflicts.length > 0 ? conflicts : conflictsFromClaims,
     coverage: calculateEvidenceCoverage(graph),
   };
 }

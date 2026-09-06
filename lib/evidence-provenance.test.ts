@@ -1,4 +1,5 @@
-import { buildResearchResultProvenance, buildGroundedClaimsFromResearchAnalysis } from "./evidence-provenance";
+import { buildResearchResultProvenance, buildGroundedClaimsFromResearchAnalysis, buildDecisionConflicts } from "./evidence-provenance";
+import type { ProvenanceGraph } from "./evidence-provenance";
 import { describe, expect, it } from "vitest";
 import {
   buildEvidenceProvenance,
@@ -811,7 +812,7 @@ describe("Evidence coverage conflict semantics", () => {
           id: "evidence-1",
           source_id: "source-1",
           claim: "Demand is declining.",
-          polarity: "contradicts",
+          polarity: "against",
           type: "fact",
           strength: 80,
           verification: "verified",
@@ -881,7 +882,7 @@ describe("Evidence coverage mixed conflict semantics", () => {
           id: "evidence-contradict",
           source_id: "source-2",
           claim: "Demand is declining.",
-          polarity: "contradicts",
+          polarity: "against",
           type: "fact",
           strength: 80,
           verification: "verified",
@@ -954,7 +955,7 @@ describe("Evidence coverage context semantics", () => {
           source_id: "source-1",
           claim: "The market is undergoing seasonal changes.",
           polarity: "neutral",
-          type: "context",
+          type: "fact",
           strength: 70,
           verification: "verified",
         },
@@ -1243,7 +1244,7 @@ describe("Evidence coverage verified contradiction semantics", () => {
           id: "evidence-contradict",
           source_id: "source-1",
           claim: "Demand is declining.",
-          polarity: "contradicts",
+          polarity: "against",
           type: "fact",
           strength: 90,
           verification: "verified",
@@ -1278,7 +1279,7 @@ describe("Evidence coverage verified contradiction semantics", () => {
 
 describe("ProvenanceGraph validation", () => {
   it("reports fully grounded coverage when every claim has evidence", () => {
-    const graph = {
+    const graph: ProvenanceGraph = {
       sources: [],
       evidence: [
         {
@@ -1313,6 +1314,7 @@ describe("ProvenanceGraph validation", () => {
         },
       ],
       links: [],
+      conflicts: [],
     };
 
     expect(calculateEvidenceCoverage(graph)).toEqual({
@@ -1326,7 +1328,7 @@ describe("ProvenanceGraph validation", () => {
 
 
   it("reports partial coverage when only some claims have evidence", () => {
-    const graph = {
+    const graph: ProvenanceGraph = {
       sources: [],
       evidence: [
         {
@@ -1352,6 +1354,7 @@ describe("ProvenanceGraph validation", () => {
         },
       ],
       links: [],
+      conflicts: [],
     };
 
     expect(calculateEvidenceCoverage(graph)).toEqual({
@@ -1365,7 +1368,7 @@ describe("ProvenanceGraph validation", () => {
 
 
   it("reports unsupported coverage when no claims have evidence", () => {
-    const graph = {
+    const graph: ProvenanceGraph = {
       sources: [],
       evidence: [],
       claims: [
@@ -1381,6 +1384,7 @@ describe("ProvenanceGraph validation", () => {
         },
       ],
       links: [],
+      conflicts: [],
     };
 
     expect(calculateEvidenceCoverage(graph)).toEqual({
@@ -1405,6 +1409,7 @@ describe("ProvenanceGraph validation", () => {
         },
       ],
       links: [],
+      conflicts: [],
     };
 
     expect(calculateEvidenceCoverage(graph)).toEqual({
@@ -1421,6 +1426,7 @@ describe("ProvenanceGraph validation", () => {
       evidence: [],
       claims: [],
       links: [],
+      conflicts: [],
     };
 
     expect(calculateEvidenceCoverage(graph)).toEqual({
@@ -1437,6 +1443,7 @@ describe("ProvenanceGraph validation", () => {
       evidence: [],
       claims: [],
       links: [],
+      conflicts: [],
     };
 
     expect(() => validateProvenanceGraph(graph)).not.toThrow();
@@ -1454,7 +1461,8 @@ describe("ProvenanceGraph validation", () => {
         },
       ],
       links: [],
-    };
+      conflicts: [],
+      };
 
     expect(() => validateProvenanceGraph(graph)).toThrow(
       "Claim claim-1 references missing evidence evidence-missing.",
@@ -1463,7 +1471,7 @@ describe("ProvenanceGraph validation", () => {
 
 
   it("rejects a link that references an unknown claim", () => {
-    const graph = {
+    const graph: ProvenanceGraph = {
       sources: [
         {
           sourceId: "source-1",
@@ -1502,6 +1510,7 @@ describe("ProvenanceGraph validation", () => {
           relevance: 90,
         },
       ],
+    conflicts: [],
     };
 
     expect(() => validateProvenanceGraph(graph)).toThrow(
@@ -1512,7 +1521,7 @@ describe("ProvenanceGraph validation", () => {
 
 
   it("rejects a link that references unknown evidence", () => {
-    const graph = {
+    const graph: ProvenanceGraph = {
       sources: [
         {
           sourceId: "source-1",
@@ -1541,6 +1550,7 @@ describe("ProvenanceGraph validation", () => {
           relevance: 90,
         },
       ],
+    conflicts: [],
     };
 
     expect(() => validateProvenanceGraph(graph)).toThrow(
@@ -1550,7 +1560,7 @@ describe("ProvenanceGraph validation", () => {
 
 
   it("rejects a link with an invalid relationship", () => {
-    const graph = {
+    const graph: ProvenanceGraph = {
       sources: [
         {
           sourceId: "source-1",
@@ -1585,10 +1595,11 @@ describe("ProvenanceGraph validation", () => {
         {
           claimId: "claim-1",
           evidenceId: "evidence-1",
-          relationship: "invalid",
+          relationship: "invalid" as any,
           relevance: 90,
         },
       ],
+    conflicts: [],
     };
 
     expect(() => validateProvenanceGraph(graph)).toThrow(
@@ -1598,7 +1609,7 @@ describe("ProvenanceGraph validation", () => {
 
 
   it("rejects a link with relevance outside 0-100", () => {
-    const graph = {
+    const graph: ProvenanceGraph = {
       sources: [
         {
           sourceId: "source-1",
@@ -1637,6 +1648,7 @@ describe("ProvenanceGraph validation", () => {
           relevance: 101,
         },
       ],
+    conflicts: [],
     };
 
     expect(() => validateProvenanceGraph(graph)).toThrow(
@@ -1644,7 +1656,7 @@ describe("ProvenanceGraph validation", () => {
     );
   });
   it("rejects evidence that references an unknown source", () => {
-    const graph = {
+    const graph: ProvenanceGraph = {
       sources: [
         buildEvidenceProvenance({
           sourceId: "source-1",
@@ -1669,6 +1681,7 @@ describe("ProvenanceGraph validation", () => {
       ],
       claims: [],
       links: [],
+      conflicts: [],
     };
 
     expect(() => validateProvenanceGraph(graph)).toThrow(
@@ -1925,6 +1938,7 @@ describe("research analysis provenance adapter", () => {
           sources: [2],
         },
       ],
+    conflicts: [],
     };
 
     const grounded = buildGroundedClaimsFromResearchAnalysis(
@@ -2189,5 +2203,570 @@ describe("research provenance coverage integration", () => {
       coverage: 0.5,
       status: "partially_grounded",
     });
+  });
+});
+
+describe("automatic decision conflict construction", () => {
+  it("builds a material conflict when one claim has supporting and contradictory evidence", () => {
+    const graph = buildResearchResultProvenance(
+      [
+        {
+          title: "Supporting Source",
+          content: "Demand is increasing.",
+          url: "https://example.com/support",
+          authority: { score: 90, type: "official" },
+          relevance_score: 95,
+          directness_score: 90,
+          evidence_score: 92,
+        },
+        {
+          title: "Contradicting Source",
+          content: "Demand is declining.",
+          url: "https://example.com/against",
+          authority: { score: 85, type: "secondary" },
+          relevance_score: 90,
+          directness_score: 85,
+          evidence_score: 88,
+        },
+      ],
+      [
+        {
+          claimId: "claim-1",
+          text: "Demand direction is uncertain.",
+          evidenceIds: [
+            "evidence-source-1",
+            "evidence-source-2",
+          ],
+        },
+      ],
+      [
+        {
+          claimId: "claim-1",
+          evidenceId: "evidence-source-1",
+          relationship: "supports",
+          relevance: 100,
+        },
+        {
+          claimId: "claim-1",
+          evidenceId: "evidence-source-2",
+          relationship: "contradicts",
+          relevance: 100,
+        },
+      ],
+    );
+
+    const conflicts = buildDecisionConflicts(graph);
+
+    expect(conflicts).toEqual([
+      {
+        id: "conflict-claim-1",
+        claim_ids: ["claim-1"],
+        evidence_ids: [
+          "evidence-source-1",
+          "evidence-source-2",
+        ],
+        severity: "material",
+        explanation:
+          "Claim claim-1 has both supporting and contradictory evidence.",
+      },
+    ]);
+  });
+});
+
+describe("automatic decision conflict evidence lineage", () => {
+  it("includes only supporting and contradictory evidence in the conflict lineage", () => {
+    const graph = buildResearchResultProvenance(
+      [
+        {
+          title: "Supporting Source",
+          content: "Demand is increasing.",
+          url: "https://example.com/support",
+          authority: { score: 90, type: "official" },
+          relevance_score: 95,
+          directness_score: 90,
+          evidence_score: 92,
+        },
+        {
+          title: "Contradicting Source",
+          content: "Demand is declining.",
+          url: "https://example.com/against",
+          authority: { score: 85, type: "secondary" },
+          relevance_score: 90,
+          directness_score: 85,
+          evidence_score: 88,
+        },
+        {
+          title: "Context Source",
+          content: "Demand varies by region.",
+          url: "https://example.com/context",
+          authority: { score: 80, type: "secondary" },
+          relevance_score: 85,
+          directness_score: 80,
+          evidence_score: 82,
+        },
+      ],
+      [
+        {
+          claimId: "claim-1",
+          text: "Demand direction is uncertain.",
+          evidenceIds: [
+            "evidence-source-1",
+            "evidence-source-2",
+            "evidence-source-3",
+          ],
+        },
+      ],
+      [
+        {
+          claimId: "claim-1",
+          evidenceId: "evidence-source-1",
+          relationship: "supports",
+          relevance: 100,
+        },
+        {
+          claimId: "claim-1",
+          evidenceId: "evidence-source-2",
+          relationship: "contradicts",
+          relevance: 100,
+        },
+        {
+          claimId: "claim-1",
+          evidenceId: "evidence-source-3",
+          relationship: "context",
+          relevance: 100,
+        },
+      ],
+    );
+
+    const conflicts = buildDecisionConflicts(graph);
+
+    expect(conflicts[0]?.evidence_ids).toEqual([
+      "evidence-source-1",
+      "evidence-source-2",
+    ]);
+  });
+});
+
+describe("automatic decision conflict determinism", () => {
+  it("builds conflicts in deterministic claim order", () => {
+    const graph = buildResearchResultProvenance(
+      [
+        {
+          title: "Source One",
+          content: "Demand is increasing.",
+          url: "https://example.com/one",
+          authority: { score: 90, type: "official" },
+          relevance_score: 95,
+          directness_score: 90,
+          evidence_score: 92,
+        },
+        {
+          title: "Source Two",
+          content: "Demand is declining.",
+          url: "https://example.com/two",
+          authority: { score: 85, type: "secondary" },
+          relevance_score: 90,
+          directness_score: 85,
+          evidence_score: 88,
+        },
+        {
+          title: "Source Three",
+          content: "Costs are increasing.",
+          url: "https://example.com/three",
+          authority: { score: 80, type: "secondary" },
+          relevance_score: 85,
+          directness_score: 80,
+          evidence_score: 82,
+        },
+        {
+          title: "Source Four",
+          content: "Costs are declining.",
+          url: "https://example.com/four",
+          authority: { score: 75, type: "secondary" },
+          relevance_score: 80,
+          directness_score: 75,
+          evidence_score: 78,
+        },
+      ],
+      [
+        {
+          claimId: "claim-2",
+          text: "Cost direction is uncertain.",
+          evidenceIds: [
+            "evidence-source-3",
+            "evidence-source-4",
+          ],
+        },
+        {
+          claimId: "claim-1",
+          text: "Demand direction is uncertain.",
+          evidenceIds: [
+            "evidence-source-1",
+            "evidence-source-2",
+          ],
+        },
+      ],
+      [
+        {
+          claimId: "claim-2",
+          evidenceId: "evidence-source-3",
+          relationship: "supports",
+          relevance: 100,
+        },
+        {
+          claimId: "claim-2",
+          evidenceId: "evidence-source-4",
+          relationship: "contradicts",
+          relevance: 100,
+        },
+        {
+          claimId: "claim-1",
+          evidenceId: "evidence-source-1",
+          relationship: "supports",
+          relevance: 100,
+        },
+        {
+          claimId: "claim-1",
+          evidenceId: "evidence-source-2",
+          relationship: "contradicts",
+          relevance: 100,
+        },
+      ],
+    );
+
+    expect(buildDecisionConflicts(graph)).toEqual([
+      {
+        id: "conflict-claim-2",
+        claim_ids: ["claim-2"],
+        evidence_ids: [
+          "evidence-source-3",
+          "evidence-source-4",
+        ],
+        severity: "material",
+        explanation:
+          "Claim claim-2 has both supporting and contradictory evidence.",
+      },
+      {
+        id: "conflict-claim-1",
+        claim_ids: ["claim-1"],
+        evidence_ids: [
+          "evidence-source-1",
+          "evidence-source-2",
+        ],
+        severity: "material",
+        explanation:
+          "Claim claim-1 has both supporting and contradictory evidence.",
+      },
+    ]);
+  });
+});
+
+describe("automatic decision conflict graph integration", () => {
+  it("automatically attaches detected conflicts to the provenance graph", () => {
+    const graph = buildResearchResultProvenance(
+      [
+        {
+          title: "Supporting Source",
+          content: "Demand is increasing.",
+          url: "https://example.com/support",
+          authority: { score: 90, type: "official" },
+          relevance_score: 95,
+          directness_score: 90,
+          evidence_score: 92,
+        },
+        {
+          title: "Contradicting Source",
+          content: "Demand is declining.",
+          url: "https://example.com/against",
+          authority: { score: 85, type: "secondary" },
+          relevance_score: 90,
+          directness_score: 85,
+          evidence_score: 88,
+        },
+      ],
+      [
+        {
+          claimId: "claim-1",
+          text: "Demand direction is uncertain.",
+          evidenceIds: [
+            "evidence-source-1",
+            "evidence-source-2",
+          ],
+        },
+      ],
+      [
+        {
+          claimId: "claim-1",
+          evidenceId: "evidence-source-1",
+          relationship: "supports",
+          relevance: 100,
+        },
+        {
+          claimId: "claim-1",
+          evidenceId: "evidence-source-2",
+          relationship: "contradicts",
+          relevance: 100,
+        },
+      ],
+    );
+
+    expect(graph.conflicts).toEqual([
+      {
+        id: "conflict-claim-1",
+        claim_ids: ["claim-1"],
+        evidence_ids: [
+          "evidence-source-1",
+          "evidence-source-2",
+        ],
+        severity: "material",
+        explanation:
+          "Claim claim-1 has both supporting and contradictory evidence.",
+      },
+    ]);
+  });
+});
+
+describe("automatic decision conflict preservation", () => {
+  it("preserves explicit conflicts without adding duplicate automatic conflicts", () => {
+    const explicitConflict = {
+      id: "conflict-explicit",
+      claim_ids: ["claim-1"],
+      evidence_ids: [
+        "evidence-source-1",
+        "evidence-source-2",
+      ],
+      severity: "material" as const,
+      explanation: "Explicit conflict from decision analysis.",
+    };
+
+    const graph = buildResearchResultProvenance(
+      [
+        {
+          title: "Supporting Source",
+          content: "Demand is increasing.",
+          url: "https://example.com/support",
+          authority: { score: 90, type: "official" },
+          relevance_score: 95,
+          directness_score: 90,
+          evidence_score: 92,
+        },
+        {
+          title: "Contradicting Source",
+          content: "Demand is declining.",
+          url: "https://example.com/against",
+          authority: { score: 85, type: "secondary" },
+          relevance_score: 90,
+          directness_score: 85,
+          evidence_score: 88,
+        },
+      ],
+      [
+        {
+          claimId: "claim-1",
+          text: "Demand direction is uncertain.",
+          evidenceIds: [
+            "evidence-source-1",
+            "evidence-source-2",
+          ],
+        },
+      ],
+      [
+        {
+          claimId: "claim-1",
+          evidenceId: "evidence-source-1",
+          relationship: "supports",
+          relevance: 100,
+        },
+        {
+          claimId: "claim-1",
+          evidenceId: "evidence-source-2",
+          relationship: "contradicts",
+          relevance: 100,
+        },
+      ],
+      [explicitConflict],
+    );
+
+    expect(graph.conflicts).toEqual([explicitConflict]);
+  });
+});
+
+describe("automatic decision conflict validation", () => {
+  it("produces conflicts that pass provenance graph validation", () => {
+    const graph = buildResearchResultProvenance(
+      [
+        {
+          title: "Supporting Source",
+          content: "Demand is increasing.",
+          url: "https://example.com/support",
+          authority: { score: 90, type: "official" },
+          relevance_score: 95,
+          directness_score: 90,
+          evidence_score: 92,
+        },
+        {
+          title: "Contradicting Source",
+          content: "Demand is declining.",
+          url: "https://example.com/against",
+          authority: { score: 85, type: "secondary" },
+          relevance_score: 90,
+          directness_score: 85,
+          evidence_score: 88,
+        },
+      ],
+      [
+        {
+          claimId: "claim-1",
+          text: "Demand direction is uncertain.",
+          evidenceIds: [
+            "evidence-source-1",
+            "evidence-source-2",
+          ],
+        },
+      ],
+      [
+        {
+          claimId: "claim-1",
+          evidenceId: "evidence-source-1",
+          relationship: "supports",
+          relevance: 100,
+        },
+        {
+          claimId: "claim-1",
+          evidenceId: "evidence-source-2",
+          relationship: "contradicts",
+          relevance: 100,
+        },
+      ],
+    );
+
+    expect(() => validateProvenanceGraph(graph)).not.toThrow();
+  });
+});
+
+describe("automatic decision conflict false-positive protection", () => {
+  it("does not create a conflict when a claim has only supporting evidence", () => {
+    const graph = buildResearchResultProvenance(
+      [
+        {
+          title: "Supporting Source One",
+          content: "Demand is increasing.",
+          url: "https://example.com/one",
+          authority: { score: 90, type: "official" },
+          relevance_score: 95,
+          directness_score: 90,
+          evidence_score: 92,
+        },
+        {
+          title: "Supporting Source Two",
+          content: "Demand continues to increase.",
+          url: "https://example.com/two",
+          authority: { score: 85, type: "secondary" },
+          relevance_score: 90,
+          directness_score: 85,
+          evidence_score: 88,
+        },
+      ],
+      [
+        {
+          claimId: "claim-1",
+          text: "Demand is increasing.",
+          evidenceIds: [
+            "evidence-source-1",
+            "evidence-source-2",
+          ],
+        },
+      ],
+      [
+        {
+          claimId: "claim-1",
+          evidenceId: "evidence-source-1",
+          relationship: "supports",
+          relevance: 100,
+        },
+        {
+          claimId: "claim-1",
+          evidenceId: "evidence-source-2",
+          relationship: "supports",
+          relevance: 100,
+        },
+      ],
+    );
+
+    expect(graph.conflicts).toEqual([]);
+  });
+});
+
+describe("automatic decision conflict mixed claims", () => {
+  it("creates conflicts only for claims with both supporting and contradictory evidence", () => {
+    const graph = buildResearchResultProvenance(
+      [
+        {
+          title: "Demand Support",
+          content: "Demand is increasing.",
+          url: "https://example.com/demand-support",
+          authority: { score: 90, type: "official" },
+          relevance_score: 95,
+          directness_score: 90,
+          evidence_score: 92,
+        },
+        {
+          title: "Demand Contradiction",
+          content: "Demand is declining.",
+          url: "https://example.com/demand-against",
+          authority: { score: 85, type: "secondary" },
+          relevance_score: 90,
+          directness_score: 85,
+          evidence_score: 88,
+        },
+        {
+          title: "Cost Support",
+          content: "Costs are increasing.",
+          url: "https://example.com/cost-support",
+          authority: { score: 80, type: "secondary" },
+          relevance_score: 85,
+          directness_score: 80,
+          evidence_score: 82,
+        },
+      ],
+      [
+        {
+          claimId: "claim-1",
+          text: "Demand direction is uncertain.",
+          evidenceIds: [
+            "evidence-source-1",
+            "evidence-source-2",
+          ],
+        },
+        {
+          claimId: "claim-2",
+          text: "Costs are increasing.",
+          evidenceIds: ["evidence-source-3"],
+        },
+      ],
+      [
+        {
+          claimId: "claim-1",
+          evidenceId: "evidence-source-1",
+          relationship: "supports",
+          relevance: 100,
+        },
+        {
+          claimId: "claim-1",
+          evidenceId: "evidence-source-2",
+          relationship: "contradicts",
+          relevance: 100,
+        },
+        {
+          claimId: "claim-2",
+          evidenceId: "evidence-source-3",
+          relationship: "supports",
+          relevance: 100,
+        },
+      ],
+    );
+
+    expect(graph.conflicts).toHaveLength(1);
+    expect(graph.conflicts[0]?.claim_ids).toEqual(["claim-1"]);
   });
 });

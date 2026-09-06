@@ -454,11 +454,6 @@ confidence must be an integer from 0 to 100.
     analysis,
     provenanceBase,
   );
-  const provenance = buildResearchResultProvenance(
-    sources,
-    groundedProvenance.claims,
-    groundedProvenance.links,
-  );
 
   const v2Sources = sources.map((source, index) => ({
     id: `source-${index + 1}`,
@@ -479,6 +474,13 @@ confidence must be an integer from 0 to 100.
     evidence: v2Evidence,
     factors: v2Factors,
   });
+
+  const provenance = buildResearchResultProvenance(
+    sources,
+    groundedProvenance.claims,
+    groundedProvenance.links,
+    v2Decision.decision.conflicts,
+  );
 
   if (!v2Decision.valid) {
     throw new Error(`BILLBLI decision validation failed: ${v2Decision.errors.join("; ")}`);
