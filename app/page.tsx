@@ -30,6 +30,10 @@ import {
   getResearchShareContent,
   getStudyShareContent,
 } from "@/lib/result-share-content";
+import {
+  downloadResearchPdf,
+  downloadStudyPdf,
+} from "@/lib/result-pdf-download";
 
 type Source = {
   title?: string;
@@ -521,7 +525,9 @@ export default function Home() {
                     <StudyBox result={result as StudyResponse} />
                     <ResultActions
                       route="study"
-                      onDownload={() => {}}
+                      onDownload={() =>
+                        downloadStudyPdf(question, result as StudyResponse)
+                      }
                       onShare={handleShare}
                       onPrint={handlePrint}
                       onDelete={() => {}}
@@ -533,7 +539,9 @@ export default function Home() {
                     <DecisionBox result={result as ResearchResult} />
                     <ResultActions
                       route="research"
-                      onDownload={() => {}}
+                      onDownload={() =>
+                        downloadResearchPdf(question, result as ResearchResult)
+                      }
                       onShare={handleShare}
                       onPrint={handlePrint}
                       onDelete={() => {}}
