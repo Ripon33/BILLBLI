@@ -1,0 +1,19 @@
+import AuthNav from "@/components/AuthNav";
+import { requireUser } from "@/lib/supabase/auth";
+
+export const dynamic = "force-dynamic";
+
+export default async function WorkspaceLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  await requireUser();
+
+  return (
+    <>
+      <AuthNav />
+      {children}
+    </>
+  );
+}
