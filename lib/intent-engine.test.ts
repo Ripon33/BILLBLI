@@ -209,3 +209,21 @@ describe("intent priority for mixed decisions", () => {
     expect(result.primaryMode).toBe("shopping");
   });
 });
+
+it("classifies an execution command as operations", () => {
+  const result = classifyIntent("Send this report to my team.");
+
+  expect(result).toMatchObject({
+    primaryIntent: "execute",
+    primaryMode: "operations",
+  });
+});
+
+it("classifies a flight booking command as travel execution", () => {
+  const result = classifyIntent("Book a flight to Dubai.");
+
+  expect(result).toMatchObject({
+    primaryIntent: "execute",
+    primaryMode: "travel",
+  });
+});

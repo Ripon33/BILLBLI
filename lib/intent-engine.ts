@@ -3,7 +3,8 @@ export type DecisionIntent =
   | "decide"
   | "research"
   | "plan"
-  | "solve";
+  | "solve"
+  | "execute";
 
 export type DecisionMode =
   | "study"
@@ -15,6 +16,7 @@ export type DecisionMode =
   | "healthcare"
   | "technology"
   | "travel"
+  | "operations"
   | "general";
 
 export interface IntentClassification {
@@ -39,6 +41,32 @@ function detectSignals(question: string): Array<{ intent: DecisionIntent; mode: 
       signals.push({ intent, mode });
     }
   };
+
+  // Execution
+  if (
+    containsAny(text, [
+      "send this report",
+      "send the report",
+      "send this",
+      "send it",
+      "email this",
+      "email the report",
+      "deliver this",
+      "share this",
+      "forward this",
+    ])
+  ) {
+    add("execute", "operations");
+  }
+
+  if (
+    containsAny(text, [
+      "book a flight",
+      "book the flight",
+    ])
+  ) {
+    add("execute", "travel");
+  }
 
   // Learning
   if (
@@ -140,6 +168,7 @@ function detectSignals(question: string): Array<{ intent: DecisionIntent; mode: 
   if (
     containsAny(text, [
       "travel", "trip", "vacation", "destination",
+      "flight", "flights", "book a flight",
       "holiday", "ভ্রমণ", "ছুটি", "سفر", "عطلة",
       "destino", "viaje", "voyage", "urlaub",
       "reiseziel",
@@ -198,6 +227,7 @@ export function classifyIntent(question: string): IntentClassification {
     plan: 65,
     solve: 60,
     decide: 70,
+    execute: 110,
   };
 
   const rankedSignals = [...signals].sort(
