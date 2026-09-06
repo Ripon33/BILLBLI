@@ -3,12 +3,33 @@
 import { FormEvent, useEffect, useState } from "react";
 import DecisionBox from "@/components/DecisionBox";
 import StudyBox from "@/components/StudyBox";
+import { ResultActions } from "@/components/result-actions";
 import type { StudyResponse } from "@/lib/study-response";
-import { createHistoryItem, getHistoryPreview, parseHistory, persistHistory } from "@/lib/research-history";
+import {
+  createHistoryItem,
+  getHistoryPreview,
+  parseHistory,
+  persistHistory,
+  deleteResearchHistoryItem,
+} from "@/lib/research-history";
+import { getHistoryRestoreState } from "@/lib/history-restore";
+import {
+  STUDY_HISTORY_KEY,
+  saveStudyHistory,
+  getStudyHistoryRestoreState,
+  deleteStudyHistoryItem,
+} from "@/lib/study-history";
 import { createResearchRequest } from "@/lib/research-request";
 import { classifyIntent } from "@/lib/intent-engine";
 import { getAnswerRoute } from "@/lib/answer-routing";
 import { shouldUseWebResearch } from "@/lib/research-routing";
+import { printResult } from "@/lib/result-print";
+import { shareResult } from "@/lib/result-share";
+import { createShareHandler } from "@/lib/result-share-handler";
+import {
+  getResearchShareContent,
+  getStudyShareContent,
+} from "@/lib/result-share-content";
 
 type Source = {
   title?: string;
@@ -48,16 +69,55 @@ export default function Home() {
   const [question, setQuestion] = useState("");
   const [result, setResult] = useState<ResearchResult | StudyResponse | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [studyHistory, setStudyHistory] = useState<
+    Array<{
+      id: string;
+      question: string;
+      createdAt: string;
+      result: StudyResponse;
+    }>
+  >([]);
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
   const [answerRoute, setAnswerRoute] = useState<"study" | "research">("research");
   const [error, setError] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
+  function handlePrint() {
+    printResult(answerRoute, question);
+  }
+
+  async function handleShare() {
+    if (!result) return;
+
+    if ("type" in result && result.type === "study") {
+      const text = getStudyShareContent(question, result);
+      await createShareHandler(
+        "study",
+        question,
+        text,
+        shareResult,
+      )();
+      return;
+    }
+
+    const researchResult = result as ResearchResult;
+    const text = getResearchShareContent(question, researchResult);
+    await createShareHandler(
+      "research",
+      question,
+      text,
+      shareResult,
+    )();
+  }
+
   useEffect(() => {
     try {
       const saved = localStorage.getItem(HISTORY_KEY);
       if (saved) setHistory(parseHistory<ResearchResult>(saved));
+
+      const savedStudy = localStorage.getItem(STUDY_HISTORY_KEY);
+      if (savedStudy) setStudyHistory(parseHistory<StudyResponse>(savedStudy));
     } catch {
       // Ignore malformed local history.
     }
@@ -125,7 +185,17 @@ export default function Home() {
       }
 
       setResult(data);
-      if (route === "research") saveHistory(trimmed, data);
+      if (route === "research") {
+        saveHistory(trimmed, data);
+      } else {
+        const next = saveStudyHistory(
+          localStorage,
+          studyHistory,
+          trimmed,
+          data as StudyResponse,
+        );
+        setStudyHistory(next);
+      }
     } catch (err) {
       setError(
         err instanceof Error
@@ -145,8 +215,11 @@ export default function Home() {
   }
 
   function loadHistory(item: HistoryItem) {
-    setQuestion(item.question);
-    setResult(null);
+    const restored = getHistoryRestoreState(item);
+
+    setQuestion(restored.question);
+    setResult(restored.result);
+    setAnswerRoute(restored.route);
     setError("");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -197,27 +270,101 @@ export default function Home() {
             </div>
 
             {history.length === 0 ? (
-              <div className="px-2 py-6 text-xs leading-5 text-zinc-400">
+              <div className="px-2 py-4 text-xs leading-5 text-zinc-400">
                 Your completed research will appear here.
               </div>
             ) : (
               <div className="space-y-1">
                 {history.map((item) => (
-                  <button
+                  <div
                     key={item.id}
-                    onClick={() => loadHistory(item)}
-                    className="group w-full rounded-xl px-3 py-3 text-left transition hover:bg-zinc-50"
+                    className="group flex items-start gap-1 rounded-xl transition hover:bg-zinc-50"
                   >
-                    <div className="line-clamp-2 text-sm font-medium leading-5 text-zinc-800">
-                      {item.question}
-                    </div>
-                    <div className="mt-1 text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-400">
-                      {getHistoryPreview(item).decision}
-                    </div>
-                  </button>
+                    <button
+                      onClick={() => loadHistory(item)}
+                      className="min-w-0 flex-1 px-3 py-3 text-left"
+                    >
+                      <div className="line-clamp-2 text-sm font-medium leading-5 text-zinc-800">
+                        {item.question}
+                      </div>
+                      <div className="mt-1 text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-400">
+                        {getHistoryPreview(item).decision}
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`Delete research history: ${item.question}`}
+                      onClick={() => {
+                        const next = deleteResearchHistoryItem(
+                          localStorage,
+                          history,
+                          item.id,
+                        );
+                        setHistory(next);
+                      }}
+                      className="mt-2 mr-2 rounded-lg px-2 py-1 text-xs text-zinc-300 opacity-0 transition hover:bg-zinc-200 hover:text-zinc-700 group-hover:opacity-100"
+                    >
+                      ×
+                    </button>
+                  </div>
                 ))}
               </div>
             )}
+
+            <div className="mt-7 border-t border-zinc-100 pt-5">
+              <div className="px-2 pb-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
+                Recent study
+              </div>
+
+              {studyHistory.length === 0 ? (
+                <div className="px-2 py-4 text-xs leading-5 text-zinc-400">
+                  Your completed studies will appear here.
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {studyHistory.map((item) => (
+                    <div
+                      key={item.id}
+                      className="group flex items-start gap-1 rounded-xl transition hover:bg-zinc-50"
+                    >
+                      <button
+                        onClick={() => {
+                          const restored = getStudyHistoryRestoreState(item);
+                          setQuestion(restored.question);
+                          setResult(restored.result);
+                          setAnswerRoute(restored.route);
+                          setError("");
+                          window.scrollTo({ top: 0, behavior: "smooth" });
+                        }}
+                        className="min-w-0 flex-1 px-3 py-3 text-left"
+                      >
+                        <div className="line-clamp-2 text-sm font-medium leading-5 text-zinc-800">
+                          {item.question}
+                        </div>
+                        <div className="mt-1 text-[10px] font-medium uppercase tracking-[0.12em] text-zinc-400">
+                          Study
+                        </div>
+                      </button>
+                      <button
+                        type="button"
+                        aria-label={`Delete study history: ${item.question}`}
+                        onClick={() => {
+                          const next = deleteStudyHistoryItem(
+                            localStorage,
+                            studyHistory,
+                            item.id,
+                          );
+                          setStudyHistory(next);
+                        }}
+                        className="mt-2 mr-2 rounded-lg px-2 py-1 text-xs text-zinc-300 opacity-0 transition hover:bg-zinc-200 hover:text-zinc-700 group-hover:opacity-100"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="border-t border-zinc-200 p-4">
@@ -370,10 +517,30 @@ export default function Home() {
                 </div>
 
                 {result && "type" in result && result.type === "study" ? (
+                  <>
                     <StudyBox result={result as StudyResponse} />
-                  ) : (
+                    <ResultActions
+                      route="study"
+                      onDownload={() => {}}
+                      onShare={handleShare}
+                      onPrint={handlePrint}
+                      onDelete={() => {}}
+                      onCopy={() => {}}
+                    />
+                  </>
+                ) : (
+                  <>
                     <DecisionBox result={result as ResearchResult} />
-                  )}
+                    <ResultActions
+                      route="research"
+                      onDownload={() => {}}
+                      onShare={handleShare}
+                      onPrint={handlePrint}
+                      onDelete={() => {}}
+                      onCopy={() => {}}
+                    />
+                  </>
+                )}
               </>
             )}
 

@@ -4,6 +4,8 @@ import {
   getHistoryPreview,
   parseHistory,
   persistHistory,
+  removeHistoryItem,
+  deleteResearchHistoryItem,
 } from "./research-history";
 
 describe("research history", () => {
@@ -68,6 +70,72 @@ describe("research history", () => {
 
   it("returns an empty history for malformed stored JSON", () => {
     expect(parseHistory("{not-valid-json")).toEqual([]);
+  });
+
+  it("removes a history item by id", () => {
+    const history = [
+      {
+        id: "history-1",
+        question: "First question",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        result: { question: "First question" },
+      },
+      {
+        id: "history-2",
+        question: "Second question",
+        createdAt: "2026-01-02T00:00:00.000Z",
+        result: { question: "Second question" },
+      },
+    ];
+
+    const result = removeHistoryItem(history, "history-1");
+
+    expect(result).toEqual([history[1]]);
+  });
+
+  it("creates a history item for a Study response", () => {
+    const studyResult = {
+      type: "study" as const,
+      explanation: "বিলব্লি সিদ্ধান্ত নিতে সাহায্য করে।",
+      examples: ["বিকল্প তুলনা করা যায়।"],
+      practiceQuestions: ["কোন সুবিধাটি সবচেয়ে গুরুত্বপূর্ণ?"],
+    };
+
+    const item = createHistoryItem(
+      "বিলব্লি কীভাবে সিদ্ধান্ত নিতে সাহায্য করে?",
+      studyResult,
+    );
+
+    expect(item.question).toBe("বিলব্লি কীভাবে সিদ্ধান্ত নিতে সাহায্য করে?");
+    expect(item.result).toEqual(studyResult);
+  });
+
+  it("deletes and persists a Research History item", () => {
+    const storage = {
+      calls: [] as Array<[string, string]>,
+      setItem(key: string, value: string) {
+        this.calls.push([key, value]);
+      },
+    };
+
+    const first = createHistoryItem("First research", {
+      decision: { recommendation: "Keep" },
+    });
+
+    const second = createHistoryItem("Second research", {
+      decision: { recommendation: "Change" },
+    });
+
+    const next = deleteResearchHistoryItem(
+      storage,
+      [first, second],
+      first.id,
+    );
+
+    expect(next).toEqual([second]);
+    expect(storage.calls).toHaveLength(1);
+    expect(storage.calls[0]?.[0]).toBe("billbli-research-history");
+    expect(JSON.parse(storage.calls[0]?.[1] ?? "[]")).toEqual([second]);
   });
 
   it("does not throw when history persistence fails", () => {

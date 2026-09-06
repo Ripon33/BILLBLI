@@ -37,6 +37,13 @@ export function parseHistory<T = unknown>(saved: string): ResearchHistoryItem<T>
   }
 }
 
+export function removeHistoryItem<T>(
+  history: ResearchHistoryItem<T>[],
+  id: string,
+): ResearchHistoryItem<T>[] {
+  return history.filter((item) => item.id !== id);
+}
+
 export function persistHistory<T>(
   storage: Pick<Storage, "setItem">,
   key: string,
@@ -62,4 +69,14 @@ export function getHistoryPreview(item: ResearchHistoryItem<HistoryPreviewResult
     score: decision?.score,
     confidence: decision?.confidence,
   };
+}
+
+export function deleteResearchHistoryItem<T>(
+  storage: Pick<Storage, "setItem">,
+  history: ResearchHistoryItem<T>[],
+  id: string,
+): ResearchHistoryItem<T>[] {
+  const next = removeHistoryItem(history, id);
+  persistHistory(storage, "billbli-research-history", next);
+  return next;
 }
