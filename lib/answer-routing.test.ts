@@ -25,4 +25,10 @@ describe("answer routing", () => {
       )
     ).toBe("research");
   });
+
+  it("routes execution commands to the task path", () => {
+    expect(
+      getAnswerRoute("Book a flight to Dubai.")
+    ).toBe("task");
+  });
 });

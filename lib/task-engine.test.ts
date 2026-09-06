@@ -17,7 +17,6 @@ describe("BILLBLI task engine", () => {
       status: "ready",
     });
   });
-});
 
   it("creates a shopping decision task", () => {
     const task = createTask(
@@ -109,4 +108,5 @@ it("marks incomplete execution requests as needing input", () => {
     approvalRequired: true,
     status: "needs_input",
   });
+});
 });

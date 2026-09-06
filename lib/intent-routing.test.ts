@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { classifyIntent } from "./intent-engine";
+import { getAnswerRoute } from "./answer-routing";
 
 describe("intent routing", () => {
   it("routes study learning requests away from research", () => {
@@ -19,4 +20,13 @@ describe("intent routing", () => {
     expect(result.primaryIntent).toBe("research");
     expect(result.primaryMode).toBe("research");
   });
+
+  it("routes execution commands to the task flow", () => {
+  const result = classifyIntent("Book a flight to Dubai.");
+
+  expect(result.primaryIntent).toBe("execute");
+  expect(result.primaryMode).toBe("travel");
+  expect(getAnswerRoute("Book a flight to Dubai.", result)).toBe("task");
+});
+
 });

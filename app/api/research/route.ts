@@ -97,6 +97,11 @@ export async function POST(req: Request) {
     const classification = classifyIntent(question);
     const answerRoute = getAnswerRoute(question, classification);
 
+    if (answerRoute === "task") {
+      const { routeTask } = await import("@/lib/task-routing");
+      return NextResponse.json(routeTask(question));
+    }
+
     if (answerRoute === "study") {
       const studyPrompt = buildStudyPrompt(
         question,

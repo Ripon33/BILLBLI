@@ -85,4 +85,34 @@ describe("POST /api/research security boundary", () => {
       error: "Too many research requests. Please try again later.",
     });
   });
+
+  it("returns a structured task for execution commands", async () => {
+    const request = new Request("http://localhost/api/research", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-forwarded-for": "198.51.100.20",
+      },
+      body: JSON.stringify({
+        question: "Book a flight to Dubai.",
+      }),
+    });
+
+    const response = await POST(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data).toMatchObject({
+      route: "task",
+      task: {
+        intent: "execute",
+        domain: "travel",
+        goal: "book_flight",
+        requiredTools: ["travel_booking"],
+        approvalRequired: true,
+        status: "needs_input",
+      },
+    });
+  });
+
 });

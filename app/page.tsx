@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from "react";
 import DecisionBox from "@/components/DecisionBox";
 import StudyBox from "@/components/StudyBox";
+import TaskBox from "@/components/TaskBox";
 import { ResultActions } from "@/components/result-actions";
 import type { StudyResponse } from "@/lib/study-response";
 import {
@@ -36,6 +37,7 @@ import {
 } from "@/lib/result-pdf-download";
 import { deleteCurrentResult } from "@/lib/current-result-delete";
 import { copyResult } from "@/lib/result-copy";
+import type { BillbliTask } from "@/lib/task-engine";
 
 type Source = {
   title?: string;
@@ -43,6 +45,11 @@ type Source = {
   score?: number | null;
   authority?: string;
   authority_type?: string;
+};
+
+type TaskResult = {
+  route: "task";
+  task: BillbliTask;
 };
 
 type ResearchResult = {
@@ -73,7 +80,9 @@ const HISTORY_KEY = "billbli-research-history";
 
 export default function Home() {
   const [question, setQuestion] = useState("");
-  const [result, setResult] = useState<ResearchResult | StudyResponse | null>(null);
+  const [result, setResult] = useState<
+    ResearchResult | StudyResponse | TaskResult | null
+  >(null);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [studyHistory, setStudyHistory] = useState<
     Array<{
@@ -85,11 +94,13 @@ export default function Home() {
   >([]);
   const [loading, setLoading] = useState(false);
   const [loadingStep, setLoadingStep] = useState(0);
-  const [answerRoute, setAnswerRoute] = useState<"study" | "research">("research");
+  const [answerRoute, setAnswerRoute] = useState<"study" | "research" | "task">("research");
   const [error, setError] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   function handlePrint() {
+    if (answerRoute === "task") return;
+
     printResult(answerRoute, question);
   }
 
