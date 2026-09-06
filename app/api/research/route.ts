@@ -18,6 +18,12 @@ import { buildDecisionTradeoffs } from "@/lib/decision-tradeoff";
 import { buildDecisionRecommendation } from "@/lib/decision-recommendation";
 import { buildDecisionReassessment } from "@/lib/decision-reassessment";
 import { buildDecisionActionPlan } from "@/lib/decision-action-plan";
+import { createRateLimiter } from "@/lib/rate-limit";
+
+const researchRateLimiter = createRateLimiter({
+  limit: 10,
+  windowMs: 10 * 60 * 1000,
+});
 
 type TavilyResult = {
   title?: string;
@@ -62,6 +68,27 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { error: "Question is required." },
         { status: 400 }
+      );
+    }
+
+    if (question.length > 4000) {
+      return NextResponse.json(
+        { error: "Question is too long." },
+        { status: 400 }
+      );
+    }
+
+    const clientIp =
+      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      req.headers.get("x-real-ip") ||
+      "unknown";
+
+    const rateLimit = researchRateLimiter.check(clientIp);
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: "Too many research requests. Please try again later." },
+        { status: 429 },
       );
     }
 

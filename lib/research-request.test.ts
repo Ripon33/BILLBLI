@@ -41,4 +41,8 @@ describe("research request", () => {
       output: "bn",
     });
   });
+  it("rejects a question longer than 4000 characters", () => {
+    expect(() => createResearchRequest("a".repeat(4001))).toThrow("Question is too long.");
+  });
+
 });

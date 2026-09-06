@@ -15,6 +15,10 @@ export function createResearchRequest(
   question: string,
   outputLanguage?: DecisionLanguage,
 ): ResearchRequest {
+  if (question.length > 4000) {
+    throw new Error("Question is too long.");
+  }
+
   const context = createResearchLanguageContext(
     question,
     outputLanguage,
