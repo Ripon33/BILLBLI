@@ -19,6 +19,7 @@ import { buildDecisionRecommendation } from "@/lib/decision-recommendation";
 import { buildDecisionReassessment } from "@/lib/decision-reassessment";
 import { buildDecisionActionPlan } from "@/lib/decision-action-plan";
 import { createRateLimiter } from "@/lib/rate-limit";
+import { buildUntrustedResearchContent } from "@/lib/untrusted-research-content";
 
 const researchRateLimiter = createRateLimiter({
   limit: 10,
@@ -233,6 +234,8 @@ ${source.content || ""}
       )
       .join("\n-------------------------\n");
 
+    const untrustedEvidence = buildUntrustedResearchContent(evidence);
+
     // 6. Ask Gemini to reason over the collected evidence.
     const ai = new GoogleGenAI({
       apiKey: geminiKey,
@@ -250,7 +253,7 @@ RESEARCH PLAN:
 ${JSON.stringify(plan, null, 2)}
 
 LIVE WEB EVIDENCE:
-${evidence}
+${untrustedEvidence}
 
 Your task is to make a defensible decision from the evidence.
 
