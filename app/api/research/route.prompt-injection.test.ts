@@ -87,6 +87,38 @@ describe("POST /api/research prompt-injection boundary", () => {
     expect(call.contents).toContain("The user's requested output language is: bn");
   });
 
+  it("returns the Gemini answer in the explicitly requested language", async () => {
+    generateContent.mockResolvedValueOnce({
+      text: JSON.stringify({
+        explanation: "বিলব্লি সিদ্ধান্ত নেওয়ার জন্য গবেষণা ও বিশ্লেষণকে এক জায়গায় আনে।",
+        examples: ["বিলব্লিতে বিভিন্ন বিকল্পের তুলনা করা যায়।"],
+        practiceQuestions: ["বিলব্লি ব্যবহারের প্রধান সুবিধা কী?"],
+      }),
+    });
+
+    const { POST } = await import("./route");
+
+    const request = new Request("http://localhost/api/research", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-forwarded-for": "203.0.113.202",
+      },
+      body: JSON.stringify({
+        question:
+          "ami keno onno platform chere billbli use korbo? write in bangla language",
+      }),
+    });
+
+    const response = await POST(request);
+
+    expect(response.status).toBe(200);
+
+    const body = await response.json();
+
+    expect(JSON.stringify(body)).toContain("বিলব্লি");
+  });
+
   it("marks live web research content as untrusted before sending it to Gemini", async () => {
     const classification = classifyIntent("Should I choose option A?");
     const answerRoute = getAnswerRoute(
