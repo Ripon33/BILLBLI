@@ -3,6 +3,7 @@ import {
   createHistoryItem,
   getHistoryPreview,
   parseHistory,
+  persistHistory,
 } from "./research-history";
 
 describe("research history", () => {
@@ -67,6 +68,25 @@ describe("research history", () => {
 
   it("returns an empty history for malformed stored JSON", () => {
     expect(parseHistory("{not-valid-json")).toEqual([]);
+  });
+
+  it("does not throw when history persistence fails", () => {
+    const storage = {
+      setItem: () => {
+        throw new Error("Storage quota exceeded");
+      },
+    };
+
+    expect(() =>
+      persistHistory(storage, "billbli-research-history", [
+        {
+          id: "history-1",
+          question: "Test question",
+          createdAt: "2026-01-01T00:00:00.000Z",
+          result: { question: "Test question" },
+        },
+      ]),
+    ).not.toThrow();
   });
 
 });

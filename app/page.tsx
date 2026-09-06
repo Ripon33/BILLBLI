@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import DecisionBox from "@/components/DecisionBox";
 import StudyBox from "@/components/StudyBox";
 import type { StudyResponse } from "@/lib/study-response";
-import { createHistoryItem, getHistoryPreview, parseHistory } from "@/lib/research-history";
+import { createHistoryItem, getHistoryPreview, parseHistory, persistHistory } from "@/lib/research-history";
 import { createResearchRequest } from "@/lib/research-request";
 import { classifyIntent } from "@/lib/intent-engine";
 import { getAnswerRoute } from "@/lib/answer-routing";
@@ -88,7 +88,7 @@ export default function Home() {
     ].slice(0, 12);
 
     setHistory(next);
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+    persistHistory(localStorage, HISTORY_KEY, next);
   }
 
   async function handleSubmit(event: FormEvent) {

@@ -37,6 +37,18 @@ export function parseHistory<T = unknown>(saved: string): ResearchHistoryItem<T>
   }
 }
 
+export function persistHistory<T>(
+  storage: Pick<Storage, "setItem">,
+  key: string,
+  history: ResearchHistoryItem<T>[],
+): void {
+  try {
+    storage.setItem(key, JSON.stringify(history.slice(0, 12)));
+  } catch {
+    // Ignore storage failures so research results are not lost.
+  }
+}
+
 type HistoryPreviewResult = {
   analysis?: { decision?: string };
   decision?: { decision?: { recommendation?: string; score?: number; confidence?: number } };
