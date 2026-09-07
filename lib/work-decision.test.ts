@@ -5,6 +5,7 @@ import {
   evaluateWorkExecutionGate,
   transitionAuthorizationState,
 } from "./work-decision";
+import { evaluateWorkDecision } from "./work-engine";
 import type {
   WorkAuthorizationState,
   WorkDecisionClassification,
@@ -302,5 +303,114 @@ describe("Fail-closed work execution gate", () => {
     });
 
     expect(result.allowed).toBe(false);
+  });
+});
+
+describe("Work Engine decision integration", () => {
+  it("requires a human decision for a consequential work item", () => {
+    const work = {
+      id: "work-2",
+      title: "Terminate employee",
+      goal: "Decide whether the employee should be terminated.",
+      status: "draft",
+      priority: "normal",
+      autonomy: "auto",
+      authorization: "not_required",
+      createdAt: "2026-09-08T00:00:00.000Z",
+      updatedAt: "2026-09-08T00:00:00.000Z",
+    };
+
+    const evaluation = evaluateWorkDecision(work);
+
+    expect(evaluation.classification).toBe("human_decision_required");
+    expect(evaluation.authorization).toBe("human_decision_required");
+    expect(evaluation.requiresHumanDecision).toBe(true);
+    expect(evaluation.requiresAuthorization).toBe(true);
+    expect(evaluation.canExecute).toBe(false);
+  });
+
+  it("requires authorization for approval autonomy", () => {
+    const work = {
+      id: "work-3",
+      title: "Prepare competitor report",
+      goal: "Prepare the report for review.",
+      status: "draft",
+      priority: "normal",
+      autonomy: "approval",
+      authorization: "required",
+      createdAt: "2026-09-08T00:00:00.000Z",
+      updatedAt: "2026-09-08T00:00:00.000Z",
+    };
+
+    const evaluation = evaluateWorkDecision(work);
+
+    expect(evaluation.classification).toBe("authorization_required");
+    expect(evaluation.authorization).toBe("pending_approval");
+    expect(evaluation.requiresAuthorization).toBe(true);
+    expect(evaluation.canExecute).toBe(false);
+  });
+
+  it("keeps restricted work blocked even when legacy authorization is authorized", () => {
+    const work = {
+      id: "work-5",
+      title: "Execute restricted operation",
+      goal: "Perform an operation that is restricted from ordinary execution.",
+      status: "draft",
+      priority: "normal",
+      autonomy: "restricted",
+      authorization: "authorized",
+      createdAt: "2026-09-08T00:00:00.000Z",
+      updatedAt: "2026-09-08T00:00:00.000Z",
+    };
+
+    const evaluation = evaluateWorkDecision(work);
+
+    expect(evaluation.classification).toBe("authorization_required");
+    expect(evaluation.authorization).toBe("authorized");
+    expect(evaluation.requiresAuthorization).toBe(true);
+    expect(evaluation.canExecute).toBe(false);
+  });
+
+  it("allows explicitly authorized approval work", () => {
+    const work = {
+      id: "work-4",
+      title: "Prepare competitor report",
+      goal: "Prepare the report for review.",
+      status: "draft",
+      priority: "normal",
+      autonomy: "approval",
+      authorization: "authorized",
+      createdAt: "2026-09-08T00:00:00.000Z",
+      updatedAt: "2026-09-08T00:00:00.000Z",
+    };
+
+    const evaluation = evaluateWorkDecision(work);
+
+    expect(evaluation.classification).toBe("authorization_required");
+    expect(evaluation.authorization).toBe("authorized");
+    expect(evaluation.requiresAuthorization).toBe(true);
+    expect(evaluation.canExecute).toBe(true);
+  });
+
+  it("evaluates an ordinary auto work item as proceed", () => {
+    const work = {
+      id: "work-1",
+      title: "Research competitors",
+      goal: "Compare three competitors and summarize their pricing.",
+      status: "draft",
+      priority: "normal",
+      autonomy: "auto",
+      authorization: "not_required",
+      createdAt: "2026-09-08T00:00:00.000Z",
+      updatedAt: "2026-09-08T00:00:00.000Z",
+    };
+
+    const evaluation = evaluateWorkDecision(work);
+
+    expect(evaluation.classification).toBe("proceed");
+    expect(evaluation.authorization).toBe("not_required");
+    expect(evaluation.requiresHumanDecision).toBe(false);
+    expect(evaluation.requiresAuthorization).toBe(false);
+    expect(evaluation.canExecute).toBe(true);
   });
 });

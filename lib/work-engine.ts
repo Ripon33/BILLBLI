@@ -1,4 +1,5 @@
 import { classifyIntent } from "./intent-engine";
+import { classifyHumanDecisionRequirement, type WorkDecisionEvaluation } from "./work-decision";
 
 export type WorkStatus =
   | "draft"
@@ -295,5 +296,75 @@ export function transitionWorkTask(
   return {
     ...task,
     status: nextStatus,
+  };
+}
+
+
+export function evaluateWorkDecision(
+  work: BillbliWork,
+): WorkDecisionEvaluation {
+  const humanDecision = classifyHumanDecisionRequirement(
+    work.title,
+    work.goal,
+  );
+
+  if (humanDecision.required) {
+    return {
+      classification: "human_decision_required",
+      authorization: "human_decision_required",
+      requiresHumanDecision: true,
+      requiresAuthorization: true,
+      canExecute: false,
+      reason: humanDecision.reason,
+    };
+  }
+
+  if (work.autonomy === "approval") {
+    const authorized = work.authorization === "authorized";
+
+    return {
+      classification: "authorization_required",
+      authorization: authorized ? "authorized" : "pending_approval",
+      requiresHumanDecision: false,
+      requiresAuthorization: true,
+      canExecute: authorized,
+      reason: authorized
+        ? "Work is explicitly authorized."
+        : "Explicit authorization is required before execution.",
+    };
+  }
+
+  if (work.autonomy === "restricted") {
+    return {
+      classification: "authorization_required",
+      authorization:
+        work.authorization === "authorized"
+          ? "authorized"
+          : "pending_approval",
+      requiresHumanDecision: false,
+      requiresAuthorization: true,
+      canExecute: false,
+      reason: "Restricted work cannot execute through ordinary authorization.",
+    };
+  }
+
+  if (work.autonomy === "review") {
+    return {
+      classification: "proceed",
+      authorization: "not_required",
+      requiresHumanDecision: false,
+      requiresAuthorization: false,
+      canExecute: false,
+      reason: "Work requires review before execution.",
+    };
+  }
+
+  return {
+    classification: "proceed",
+    authorization: "not_required",
+    requiresHumanDecision: false,
+    requiresAuthorization: false,
+    canExecute: true,
+    reason: "Work is permitted to execute.",
   };
 }
