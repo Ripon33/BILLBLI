@@ -242,7 +242,7 @@ export function validateTaskDependencies(
     const dependency = taskMap.get(dependencyId);
 
     if (!dependency) {
-      continue;
+      throw new Error(`Unknown task dependency: ${dependencyId}`);
     }
 
     if (
