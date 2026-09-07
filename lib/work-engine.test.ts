@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   createWork,
+  transitionWork,
   type WorkPriority,
   type WorkStatus,
 } from "./work-engine";
@@ -42,5 +43,31 @@ describe("work engine domain", () => {
     const priorities: WorkPriority[] = ["low", "normal", "high", "urgent"];
 
     expect(priorities).toHaveLength(4);
+  });
+});
+
+describe("work engine lifecycle", () => {
+  it("moves draft work to ready", () => {
+    const work = createWork({
+      title: "Prepare a market research report",
+      goal: "Understand the current market",
+    });
+
+    const updated = transitionWork(work, "ready");
+
+    expect(updated.status).toBe("ready");
+    expect(updated.id).toBe(work.id);
+    expect(updated.updatedAt).not.toBe(work.updatedAt);
+  });
+
+  it("rejects an invalid lifecycle transition", () => {
+    const work = createWork({
+      title: "Prepare a market research report",
+      goal: "Understand the current market",
+    });
+
+    expect(() => transitionWork(work, "completed")).toThrow(
+      "Invalid work transition",
+    );
   });
 });
