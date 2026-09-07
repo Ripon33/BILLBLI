@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { classifyHumanDecisionRequirement } from "./work-decision";
 import type {
   WorkAuthorizationState,
   WorkDecisionClassification,
@@ -45,4 +46,70 @@ describe("Work Decision domain types", () => {
     expect(evaluation.authorization).toBe("not_required");
     expect(evaluation.canExecute).toBe(true);
   });
+});
+describe("Human Decision Boundary classification", () => {
+  it("requires a human decision for employment decisions", () => {
+    const result = classifyHumanDecisionRequirement(
+      "Terminate employee",
+      "Decide whether to fire the employee",
+    );
+
+    expect(result.required).toBe(true);
+    expect(result.reason).toBeTruthy();
+  });
+
+  it("requires a human decision for financial decisions", () => {
+    const result = classifyHumanDecisionRequirement(
+      "Approve major payment",
+      "Authorize a significant financial transaction",
+    );
+
+    expect(result.required).toBe(true);
+  });
+
+  it("requires a human decision for legal or compliance decisions", () => {
+    const result = classifyHumanDecisionRequirement(
+      "Legal compliance action",
+      "Make a legal or compliance decision",
+    );
+
+    expect(result.required).toBe(true);
+  });
+
+  it("requires a human decision for medical or safety decisions", () => {
+    const result = classifyHumanDecisionRequirement(
+      "Medical decision",
+      "Choose a medical treatment",
+    );
+
+    expect(result.required).toBe(true);
+  });
+
+  it("requires a human decision for destructive or irreversible actions", () => {
+    const result = classifyHumanDecisionRequirement(
+      "Delete production data",
+      "Permanently destroy the production database",
+    );
+
+    expect(result.required).toBe(true);
+  });
+
+  it("does not require a human decision for ordinary research", () => {
+    const result = classifyHumanDecisionRequirement(
+      "Research competitors",
+      "Research competitors and summarize their pricing",
+    );
+
+
+    expect(result.required).toBe(false);
+  });
+  it("does not require a human decision for ordinary purchase research", () => {
+    const result = classifyHumanDecisionRequirement(
+      "Research purchase options",
+      "Compare office equipment prices and recommendations",
+    );
+
+    expect(result.required).toBe(false);
+  });
+
 });
