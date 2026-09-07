@@ -155,3 +155,59 @@ export function createWorkDecisionRecord(
     authorization: input.authorization,
   };
 }
+
+export type WorkExecutionGateResult = {
+  allowed: boolean;
+  reason: string;
+  authorization: WorkAuthorizationState;
+};
+
+export function evaluateWorkExecutionGate(
+  evaluation: WorkDecisionEvaluation,
+): WorkExecutionGateResult {
+  const blocked = (reason: string): WorkExecutionGateResult => ({
+    allowed: false,
+    reason,
+    authorization: evaluation.authorization,
+  });
+
+  if (evaluation.classification === "blocked") {
+    return blocked("Work is blocked and cannot execute.");
+  }
+
+  if (evaluation.classification === "human_decision_required") {
+    return blocked("Human decision is required before execution.");
+  }
+
+  if (evaluation.classification === "proceed") {
+    if (
+      evaluation.authorization === "not_required" &&
+      evaluation.canExecute
+    ) {
+      return {
+        allowed: true,
+        reason: "Work is permitted to execute.",
+        authorization: evaluation.authorization,
+      };
+    }
+
+    return blocked("Execution state is not safely authorized.");
+  }
+
+  if (evaluation.classification === "authorization_required") {
+    if (
+      evaluation.authorization === "authorized" &&
+      evaluation.canExecute
+    ) {
+      return {
+        allowed: true,
+        reason: "Work is explicitly authorized to execute.",
+        authorization: evaluation.authorization,
+      };
+    }
+
+    return blocked("Explicit authorization is required before execution.");
+  }
+
+  return blocked("Execution state is not safely authorized.");
+}

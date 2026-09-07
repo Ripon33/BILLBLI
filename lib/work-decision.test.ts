@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   classifyHumanDecisionRequirement,
   createWorkDecisionRecord,
+  evaluateWorkExecutionGate,
   transitionAuthorizationState,
 } from "./work-decision";
 import type {
@@ -205,5 +206,101 @@ describe("Decision record separation", () => {
     });
 
     expect(record.authorization).not.toBe("authorized");
+  });
+});
+
+
+describe("Fail-closed work execution gate", () => {
+  it("allows proceed with no authorization required", () => {
+    const result = evaluateWorkExecutionGate({
+      classification: "proceed",
+      authorization: "not_required",
+      requiresHumanDecision: false,
+      requiresAuthorization: false,
+      canExecute: true,
+      reason: "Ordinary task.",
+    });
+
+    expect(result.allowed).toBe(true);
+    expect(result.authorization).toBe("not_required");
+  });
+
+  it("blocks when human decision is required", () => {
+    const result = evaluateWorkExecutionGate({
+      classification: "human_decision_required",
+      authorization: "human_decision_required",
+      requiresHumanDecision: true,
+      requiresAuthorization: false,
+      canExecute: false,
+      reason: "Human decision required.",
+    });
+
+    expect(result.allowed).toBe(false);
+  });
+
+  it("blocks pending approval", () => {
+    const result = evaluateWorkExecutionGate({
+      classification: "authorization_required",
+      authorization: "pending_approval",
+      requiresHumanDecision: false,
+      requiresAuthorization: true,
+      canExecute: false,
+      reason: "Approval required.",
+    });
+
+    expect(result.allowed).toBe(false);
+  });
+
+  it("blocks approved work until explicitly authorized", () => {
+    const result = evaluateWorkExecutionGate({
+      classification: "authorization_required",
+      authorization: "approved",
+      requiresHumanDecision: false,
+      requiresAuthorization: true,
+      canExecute: false,
+      reason: "Explicit authorization required.",
+    });
+
+    expect(result.allowed).toBe(false);
+  });
+
+  it("allows explicitly authorized work", () => {
+    const result = evaluateWorkExecutionGate({
+      classification: "authorization_required",
+      authorization: "authorized",
+      requiresHumanDecision: false,
+      requiresAuthorization: true,
+      canExecute: true,
+      reason: "Authorized.",
+    });
+
+    expect(result.allowed).toBe(true);
+    expect(result.authorization).toBe("authorized");
+  });
+
+  it("blocks an already blocked decision", () => {
+    const result = evaluateWorkExecutionGate({
+      classification: "blocked",
+      authorization: "blocked",
+      requiresHumanDecision: false,
+      requiresAuthorization: false,
+      canExecute: false,
+      reason: "Blocked.",
+    });
+
+    expect(result.allowed).toBe(false);
+  });
+
+  it("fails closed for inconsistent execution permission", () => {
+    const result = evaluateWorkExecutionGate({
+      classification: "blocked",
+      authorization: "blocked",
+      requiresHumanDecision: false,
+      requiresAuthorization: false,
+      canExecute: true,
+      reason: "Inconsistent state.",
+    });
+
+    expect(result.allowed).toBe(false);
   });
 });
