@@ -259,3 +259,35 @@ export function validateTaskDependencies(
     executable: true,
   };
 }
+
+const validWorkTaskTransitions: Record<
+  WorkTaskStatus,
+  WorkTaskStatus[]
+> = {
+  ready: ["running", "cancelled"],
+  running: [
+    "waiting_input",
+    "waiting_approval",
+    "completed",
+    "failed",
+  ],
+  waiting_input: ["ready", "cancelled"],
+  waiting_approval: ["ready", "running", "cancelled"],
+  completed: [],
+  failed: ["ready", "cancelled"],
+  cancelled: [],
+};
+
+export function transitionWorkTask(
+  task: BillbliWorkTask,
+  nextStatus: WorkTaskStatus,
+): BillbliWorkTask {
+  if (!validWorkTaskTransitions[task.status].includes(nextStatus)) {
+    throw new Error("Invalid task transition");
+  }
+
+  return {
+    ...task,
+    status: nextStatus,
+  };
+}
