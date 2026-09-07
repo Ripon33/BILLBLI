@@ -137,3 +137,21 @@ export function transitionAuthorizationState(
     `Invalid authorization transition: ${currentState} -> ${transition}`,
   );
 }
+
+export type WorkDecisionRecord = {
+  source: "ai" | "human";
+  decision: string;
+  authorization: WorkAuthorizationState;
+};
+
+export type CreateWorkDecisionRecordInput = WorkDecisionRecord;
+
+export function createWorkDecisionRecord(
+  input: CreateWorkDecisionRecordInput,
+): WorkDecisionRecord {
+  return {
+    source: input.source,
+    decision: input.decision,
+    authorization: input.authorization,
+  };
+}

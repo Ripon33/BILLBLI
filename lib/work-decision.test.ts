@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { classifyHumanDecisionRequirement } from "./work-decision";
-import { transitionAuthorizationState } from "./work-decision";
+import {
+  classifyHumanDecisionRequirement,
+  createWorkDecisionRecord,
+  transitionAuthorizationState,
+} from "./work-decision";
 import type {
   WorkAuthorizationState,
   WorkDecisionClassification,
@@ -147,5 +150,60 @@ describe("Authorization state transitions", () => {
     expect(() =>
       transitionAuthorizationState("rejected", "authorize"),
     ).toThrow();
+  });
+});
+describe("Decision record separation", () => {
+  it("preserves an AI recommendation as an AI source", () => {
+    const record = createWorkDecisionRecord({
+      source: "ai",
+      decision: "Recommend option A",
+      authorization: "not_required",
+    });
+
+    expect(record).toEqual({
+      source: "ai",
+      decision: "Recommend option A",
+      authorization: "not_required",
+    });
+  });
+
+  it("requires an explicit human source for a human decision", () => {
+    const record = createWorkDecisionRecord({
+      source: "human",
+      decision: "Choose option A",
+      authorization: "not_required",
+    });
+
+    expect(record.source).toBe("human");
+  });
+
+  it("keeps authorization independently represented", () => {
+    const record = createWorkDecisionRecord({
+      source: "human",
+      decision: "Choose option A",
+      authorization: "pending_approval",
+    });
+
+    expect(record.authorization).toBe("pending_approval");
+  });
+
+  it("does not authorize an AI recommendation automatically", () => {
+    const record = createWorkDecisionRecord({
+      source: "ai",
+      decision: "Recommend option A",
+      authorization: "not_required",
+    });
+
+    expect(record.authorization).not.toBe("authorized");
+  });
+
+  it("does not infer authorization merely from a human source", () => {
+    const record = createWorkDecisionRecord({
+      source: "human",
+      decision: "Choose option A",
+      authorization: "not_required",
+    });
+
+    expect(record.authorization).not.toBe("authorized");
   });
 });
