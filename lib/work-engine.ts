@@ -12,6 +12,11 @@ export type WorkPriority = "low" | "normal" | "high" | "urgent";
 
 export type WorkAutonomy = "auto" | "review" | "approval" | "restricted";
 
+export type WorkAuthorization =
+  | "not_required"
+  | "required"
+  | "authorized";
+
 export type BillbliWork = {
   id: string;
   title: string;
@@ -19,6 +24,7 @@ export type BillbliWork = {
   status: WorkStatus;
   priority: WorkPriority;
   autonomy: WorkAutonomy;
+  authorization: WorkAuthorization;
   createdAt: string;
   updatedAt: string;
 };
@@ -39,6 +45,11 @@ export function createWork(input: CreateWorkInput): BillbliWork {
     status: "draft",
     priority: "normal",
     autonomy: input.autonomy ?? "auto",
+    authorization:
+      (input.autonomy ?? "auto") === "approval" ||
+      (input.autonomy ?? "auto") === "restricted"
+        ? "required"
+        : "not_required",
     createdAt: now,
     updatedAt: now,
   };
@@ -123,5 +134,27 @@ export function getWorkPermission(work: BillbliWork): WorkPermission {
     allowed: true,
     requiresHumanDecision: false,
     requiresAuthorization: false,
+  };
+}
+
+export type AuthorizedWork = BillbliWork & {
+  authorization: WorkAuthorization;
+};
+
+export function authorizeWork(work: BillbliWork): AuthorizedWork {
+  if (work.autonomy !== "approval" && work.autonomy !== "restricted") {
+    throw new Error("Work does not require authorization");
+  }
+
+  const now = new Date().toISOString();
+  const updatedAt =
+    now === work.updatedAt
+      ? new Date(Date.parse(work.updatedAt) + 1).toISOString()
+      : now;
+
+  return {
+    ...work,
+    authorization: "authorized",
+    updatedAt,
   };
 }

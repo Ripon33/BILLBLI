@@ -3,6 +3,7 @@ import {
   createWork,
   transitionWork,
   getWorkPermission,
+  authorizeWork,
   type WorkPriority,
   type WorkStatus,
 } from "./work-engine";
@@ -141,5 +142,41 @@ describe("work engine permission decisions", () => {
       requiresHumanDecision: true,
       requiresAuthorization: true,
     });
+  });
+});
+
+describe("work engine human authorization", () => {
+  it("starts approval work without human authorization", () => {
+    const work = createWork({
+      title: "Send customer proposal",
+      goal: "Send the approved proposal to the customer",
+      autonomy: "approval",
+    });
+
+    expect(work.authorization).toBe("required");
+  });
+
+  it("records explicit human authorization", () => {
+    const work = createWork({
+      title: "Send customer proposal",
+      goal: "Send the approved proposal to the customer",
+      autonomy: "approval",
+    });
+
+    const authorized = authorizeWork(work);
+
+    expect(authorized.authorization).toBe("authorized");
+    expect(authorized.id).toBe(work.id);
+    expect(authorized.updatedAt).not.toBe(work.updatedAt);
+  });
+
+  it("does not treat an AI recommendation as human authorization", () => {
+    const work = createWork({
+      title: "Choose an employee action",
+      goal: "Recommend the appropriate next step",
+      autonomy: "review",
+    });
+
+    expect(work.authorization).toBe("not_required");
   });
 });
