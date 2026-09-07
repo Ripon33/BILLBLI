@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { classifyHumanDecisionRequirement } from "./work-decision";
+import { transitionAuthorizationState } from "./work-decision";
 import type {
   WorkAuthorizationState,
   WorkDecisionClassification,
@@ -112,4 +113,39 @@ describe("Human Decision Boundary classification", () => {
     expect(result.required).toBe(false);
   });
 
+});
+
+describe("Authorization state transitions", () => {
+  it("allows pending approval to become approved", () => {
+    const result = transitionAuthorizationState(
+      "pending_approval",
+      "approve",
+    );
+
+    expect(result).toBe("approved");
+  });
+
+  it("allows approved authorization to become authorized", () => {
+    const result = transitionAuthorizationState(
+      "approved",
+      "authorize",
+    );
+
+    expect(result).toBe("authorized");
+  });
+
+  it("allows pending approval to be rejected", () => {
+    const result = transitionAuthorizationState(
+      "pending_approval",
+      "reject",
+    );
+
+    expect(result).toBe("rejected");
+  });
+
+  it("blocks invalid authorization transitions", () => {
+    expect(() =>
+      transitionAuthorizationState("rejected", "authorize"),
+    ).toThrow();
+  });
 });

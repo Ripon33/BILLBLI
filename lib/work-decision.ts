@@ -104,3 +104,36 @@ export function classifyHumanDecisionRequirement(
     reason: "No human decision is required for this ordinary task.",
   };
 }
+export type AuthorizationTransition =
+  | "approve"
+  | "reject"
+  | "authorize";
+
+export function transitionAuthorizationState(
+  currentState: WorkAuthorizationState,
+  transition: AuthorizationTransition,
+): WorkAuthorizationState {
+  switch (currentState) {
+    case "pending_approval":
+      if (transition === "approve") {
+        return "approved";
+      }
+
+      if (transition === "reject") {
+        return "rejected";
+      }
+
+      break;
+
+    case "approved":
+      if (transition === "authorize") {
+        return "authorized";
+      }
+
+      break;
+  }
+
+  throw new Error(
+    `Invalid authorization transition: ${currentState} -> ${transition}`,
+  );
+}
