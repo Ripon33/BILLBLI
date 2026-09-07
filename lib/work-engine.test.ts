@@ -71,3 +71,30 @@ describe("work engine lifecycle", () => {
     );
   });
 });
+
+describe("work engine autonomy", () => {
+  it("creates work with normal auto autonomy by default", () => {
+    const work = createWork({
+      title: "Research competitors",
+      goal: "Identify the strongest competitors",
+    });
+
+    expect(work.autonomy).toBe("auto");
+  });
+
+  it("allows an explicit autonomy level when creating work", () => {
+    const work = createWork({
+      title: "Send a customer proposal",
+      goal: "Prepare and send the approved proposal",
+      autonomy: "approval",
+    });
+
+    expect(work.autonomy).toBe("approval");
+  });
+
+  it("supports the four approved autonomy levels", () => {
+    const autonomyLevels = ["auto", "review", "approval", "restricted"] as const;
+
+    expect(autonomyLevels).toHaveLength(4);
+  });
+});

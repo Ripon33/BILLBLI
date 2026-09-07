@@ -10,12 +10,15 @@ export type WorkStatus =
 
 export type WorkPriority = "low" | "normal" | "high" | "urgent";
 
+export type WorkAutonomy = "auto" | "review" | "approval" | "restricted";
+
 export type BillbliWork = {
   id: string;
   title: string;
   goal: string;
   status: WorkStatus;
   priority: WorkPriority;
+  autonomy: WorkAutonomy;
   createdAt: string;
   updatedAt: string;
 };
@@ -23,6 +26,7 @@ export type BillbliWork = {
 export type CreateWorkInput = {
   title: string;
   goal: string;
+  autonomy?: WorkAutonomy;
 };
 
 export function createWork(input: CreateWorkInput): BillbliWork {
@@ -34,6 +38,7 @@ export function createWork(input: CreateWorkInput): BillbliWork {
     goal: input.goal,
     status: "draft",
     priority: "normal",
+    autonomy: input.autonomy ?? "auto",
     createdAt: now,
     updatedAt: now,
   };
