@@ -16,10 +16,15 @@ export async function POST(req: Request) {
       );
     }
 
+    const requestBody =
+      typeof body === "object" && body !== null
+        ? body as Record<string, unknown>
+        : {};
+
     const title =
-      typeof body?.title === "string" ? body.title.trim() : "";
+      typeof requestBody.title === "string" ? requestBody.title.trim() : "";
     const goal =
-      typeof body?.goal === "string" ? body.goal.trim() : "";
+      typeof requestBody.goal === "string" ? requestBody.goal.trim() : "";
 
     if (!title || !goal) {
       return NextResponse.json(
