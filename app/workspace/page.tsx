@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import DecisionBox from "@/components/DecisionBox";
 import StudyBox from "@/components/StudyBox";
 import TaskBox from "@/components/TaskBox";
+import WorkCreationPanel from "@/components/WorkCreationPanel";
 import { ResultActions } from "@/components/result-actions";
 import type { StudyResponse } from "@/lib/study-response";
 import {
@@ -535,6 +536,10 @@ export default function Home() {
                   <Feature label="Research" value="Multiple sources" />
                   <Feature label="Verify" value="Evidence & conflicts" />
                   <Feature label="Decide" value="Clear recommendation" />
+                </div>
+
+                <div className="mt-10">
+                  <WorkCreationPanel />
                 </div>
               </section>
             ) : loading ? (
