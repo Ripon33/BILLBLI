@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   createWork,
   transitionWork,
+  getWorkPermission,
   type WorkPriority,
   type WorkStatus,
 } from "./work-engine";
@@ -96,5 +97,49 @@ describe("work engine autonomy", () => {
     const autonomyLevels = ["auto", "review", "approval", "restricted"] as const;
 
     expect(autonomyLevels).toHaveLength(4);
+  });
+});
+
+describe("work engine permission decisions", () => {
+  it("allows routine auto work without human authorization", () => {
+    const work = createWork({
+      title: "Research competitors",
+      goal: "Identify the strongest competitors",
+      autonomy: "auto",
+    });
+
+    expect(getWorkPermission(work)).toEqual({
+      allowed: true,
+      requiresHumanDecision: false,
+      requiresAuthorization: false,
+    });
+  });
+
+  it("requires human authorization for approval work", () => {
+    const work = createWork({
+      title: "Send customer proposal",
+      goal: "Send the approved proposal to the customer",
+      autonomy: "approval",
+    });
+
+    expect(getWorkPermission(work)).toEqual({
+      allowed: false,
+      requiresHumanDecision: false,
+      requiresAuthorization: true,
+    });
+  });
+
+  it("requires a human decision when the work crosses a human decision boundary", () => {
+    const work = createWork({
+      title: "Terminate employee",
+      goal: "Decide whether an employee should be terminated",
+      autonomy: "auto",
+    });
+
+    expect(getWorkPermission(work)).toEqual({
+      allowed: false,
+      requiresHumanDecision: true,
+      requiresAuthorization: true,
+    });
   });
 });

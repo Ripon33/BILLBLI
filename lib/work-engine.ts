@@ -75,3 +75,53 @@ export function transitionWork(
     updatedAt,
   };
 }
+
+export type WorkPermission = {
+  allowed: boolean;
+  requiresHumanDecision: boolean;
+  requiresAuthorization: boolean;
+};
+
+const humanDecisionKeywords = [
+  "terminate employee",
+  "fire employee",
+  "dismiss employee",
+  "medical decision",
+  "legal decision",
+];
+
+export function getWorkPermission(work: BillbliWork): WorkPermission {
+  const requiresHumanDecision = humanDecisionKeywords.some((keyword) =>
+    `${work.title} ${work.goal}`.toLowerCase().includes(keyword),
+  );
+
+  if (requiresHumanDecision) {
+    return {
+      allowed: false,
+      requiresHumanDecision: true,
+      requiresAuthorization: true,
+    };
+  }
+
+  if (work.autonomy === "approval" || work.autonomy === "restricted") {
+    return {
+      allowed: false,
+      requiresHumanDecision: false,
+      requiresAuthorization: true,
+    };
+  }
+
+  if (work.autonomy === "review") {
+    return {
+      allowed: false,
+      requiresHumanDecision: false,
+      requiresAuthorization: false,
+    };
+  }
+
+  return {
+    allowed: true,
+    requiresHumanDecision: false,
+    requiresAuthorization: false,
+  };
+}
