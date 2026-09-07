@@ -158,3 +158,104 @@ export function authorizeWork(work: BillbliWork): AuthorizedWork {
     updatedAt,
   };
 }
+
+export type WorkTaskStatus =
+  | "ready"
+  | "running"
+  | "waiting_input"
+  | "waiting_approval"
+  | "completed"
+  | "failed"
+  | "cancelled";
+
+export type BillbliWorkTask = {
+  id: string;
+  title: string;
+  status: WorkTaskStatus;
+  dependsOn: string[];
+};
+
+export type CreateWorkTaskInput = {
+  title: string;
+  status?: WorkTaskStatus;
+  dependsOn?: string[];
+};
+
+export function createWorkTask(
+  input: CreateWorkTaskInput,
+): BillbliWorkTask {
+  return {
+    id: crypto.randomUUID(),
+    title: input.title,
+    status: input.status ?? "ready",
+    dependsOn: input.dependsOn ?? [],
+  };
+}
+
+export type TaskDependencyValidation = {
+  valid: true;
+  executable: boolean;
+};
+
+export function validateTaskDependencies(
+  task: BillbliWorkTask,
+  allTasks: BillbliWorkTask[],
+): TaskDependencyValidation {
+  if (task.dependsOn.includes(task.id)) {
+    throw new Error("Task cannot depend on itself");
+  }
+
+  const taskMap = new Map(allTasks.map((candidate) => [candidate.id, candidate]));
+
+  function reachesTarget(
+    currentId: string,
+    targetId: string,
+    visited: Set<string>,
+  ): boolean {
+    if (currentId === targetId) {
+      return true;
+    }
+
+    if (visited.has(currentId)) {
+      return false;
+    }
+
+    visited.add(currentId);
+
+    const current = taskMap.get(currentId);
+    if (!current) {
+      return false;
+    }
+
+    return current.dependsOn.some((dependencyId) =>
+      reachesTarget(dependencyId, targetId, visited),
+    );
+  }
+
+  for (const dependencyId of task.dependsOn) {
+    const dependency = taskMap.get(dependencyId);
+
+    if (!dependency) {
+      continue;
+    }
+
+    if (
+      dependency.dependsOn.includes(task.id) ||
+      reachesTarget(dependency.id, task.id, new Set())
+    ) {
+      throw new Error("Circular task dependency");
+    }
+
+    if (dependency.status !== "completed") {
+      return {
+        valid: true,
+        executable: false,
+      };
+    }
+  }
+
+  return {
+    valid: true,
+    executable: true,
+  };
+}
