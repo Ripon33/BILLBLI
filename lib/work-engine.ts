@@ -1,3 +1,5 @@
+import { classifyIntent } from "./intent-engine";
+
 export type WorkStatus =
   | "draft"
   | "ready"
@@ -171,6 +173,7 @@ export type WorkTaskStatus =
 export type BillbliWorkTask = {
   id: string;
   title: string;
+  domain: string;
   status: WorkTaskStatus;
   dependsOn: string[];
 };
@@ -184,9 +187,12 @@ export type CreateWorkTaskInput = {
 export function createWorkTask(
   input: CreateWorkTaskInput,
 ): BillbliWorkTask {
+  const classification = classifyIntent(input.title);
+
   return {
     id: crypto.randomUUID(),
     title: input.title,
+    domain: classification.primaryMode,
     status: input.status ?? "ready",
     dependsOn: input.dependsOn ?? [],
   };

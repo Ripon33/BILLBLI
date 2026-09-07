@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   createWork,
+  createWorkTask,
   transitionWork,
   getWorkPermission,
   authorizeWork,
@@ -178,5 +179,17 @@ describe("work engine human authorization", () => {
     });
 
     expect(work.authorization).toBe("not_required");
+  });
+});
+
+
+
+describe("work engine task classification integration", () => {
+  it("includes the existing task classification domain", () => {
+    const task = createWorkTask({
+      title: "Research the best accounting software for my business",
+    });
+
+    expect(task.domain).toBe("research");
   });
 });
