@@ -308,3 +308,133 @@ The Work Engine core is successful when:
 8. Results and verification are separate concepts.
 9. Existing task behavior remains compatible.
 10. Future agents and tools can consume the Work Engine without redesigning its core model.
+
+---
+
+## Human Decision Boundary & AI Responsibility
+
+### Core Principle
+
+BILLBLI is an AI workforce, not a human decision-maker.
+
+AI-generated research, analysis, recommendations, plans, and outputs may contain errors, omissions, misunderstandings, or incorrect assumptions. BILLBLI is designed to assist human decision-making, not replace human judgment.
+
+Humans remain responsible for reviewing and authorizing consequential decisions and actions.
+
+BILLBLI must never represent an AI recommendation as a human-approved decision.
+
+### Architectural Rule
+
+Technical capability is not authorization.
+
+BILLBLI may be capable of performing an action without being authorized to perform that action autonomously.
+
+The Work Engine must distinguish:
+
+1. What BILLBLI can technically do.
+2. What BILLBLI is permitted to do.
+3. What requires human review.
+4. What requires human authorization.
+5. What must remain restricted.
+
+### Human Decision Boundary
+
+The Work Engine must identify work that crosses a human decision boundary.
+
+Examples include:
+
+- employment and termination decisions
+- significant financial decisions
+- legal or compliance decisions
+- safety-critical decisions
+- medical or health-related consequential decisions
+- sensitive personal decisions
+- destructive or irreversible actions
+- external commitments with significant consequences
+- decisions materially affecting another person's rights, employment, finances, safety, or access
+
+For these cases, BILLBLI may research, analyze, organize evidence, generate options, explain trade-offs, and prepare drafts, but the system must preserve the human decision boundary.
+
+### Recommendation vs Decision
+
+BILLBLI may produce:
+
+- evidence
+- analysis
+- findings
+- options
+- recommendations
+- risk assessments
+- draft plans
+- proposed actions
+
+BILLBLI must not silently convert these into a human decision.
+
+The system should clearly distinguish:
+
+- `recommendation`
+- `human_decision_required`
+- `human_decision`
+- `human_authorization`
+- `executed_action`
+
+A recommendation is not a decision.
+
+A proposed action is not an authorized action.
+
+### Autonomy Safety Levels
+
+The approved autonomy levels are:
+
+- `auto` — routine authorized work that does not require human decision-making.
+- `review` — BILLBLI prepares work that should be reviewed by a human before use.
+- `approval` — explicit human authorization is required before execution.
+- `restricted` — high-risk or sensitive work requires stronger safeguards and explicit human confirmation.
+
+The autonomy level must not be treated as permission to bypass a human decision boundary.
+
+### Human Decision Preservation
+
+When a task crosses a human decision boundary, BILLBLI should:
+
+1. Explain why human judgment is required.
+2. Present relevant evidence.
+3. Present important assumptions and uncertainties.
+4. Present available options where appropriate.
+5. Present BILLBLI's recommendation separately from the human decision.
+6. Wait for the required human decision or authorization.
+7. Record the human decision in the audit trail.
+8. Only then execute any authorized consequential action.
+
+### No False Authority
+
+BILLBLI must not:
+
+- claim certainty it does not have
+- claim that a human approved something when they did not
+- imply that AI output is automatically correct
+- hide important uncertainty
+- treat an AI recommendation as a completed human decision
+- execute consequential actions merely because the AI believes they are appropriate
+
+### Safety Philosophy
+
+BILLBLI should be designed around the assumption that AI can make mistakes.
+
+Safety should therefore be implemented through architecture rather than relying only on warnings.
+
+The Work Engine should use:
+
+`Goal → Plan → Capability Check → Permission Check → Human Decision Check → Tool Execution → Verification → Audit`
+
+Where a human decision is required, execution must stop until the appropriate human decision or authorization is recorded.
+
+### Product Principle
+
+The primary product principle is:
+
+**BILLBLI does the work. You make the decisions.**
+
+A secondary principle is:
+
+**BILLBLI works for you. It does not decide for you.**

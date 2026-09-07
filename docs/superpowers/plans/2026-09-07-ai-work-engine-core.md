@@ -301,3 +301,28 @@
 - [ ] Review database migration state.
 - [ ] Verify no existing research/task behavior regressed.
 - [ ] Only claim completion after fresh verification evidence.
+
+---
+
+## Architecture Amendment — Human Decision Boundary
+
+Before implementing permission and execution logic, the Work Engine must incorporate the Human Decision Boundary defined in the specification.
+
+Implementation requirements:
+
+1. Represent whether a work item crosses a human decision boundary.
+2. Keep AI recommendations distinct from human decisions.
+3. Keep human authorization distinct from AI capability.
+4. Ensure consequential execution cannot bypass required human authorization.
+5. Record human decisions and authorizations in the future audit model.
+6. Treat `auto`, `review`, `approval`, and `restricted` as autonomy controls, not substitutes for authorization.
+7. Ensure the UI can clearly communicate when a human decision is required.
+8. Design execution so that a required human decision causes the work to pause rather than silently proceed.
+
+Core safety flow:
+
+`Goal → Plan → Capability Check → Permission Check → Human Decision Check → Tool Execution → Verification → Audit`
+
+Product principle:
+
+**BILLBLI does the work. You make the decisions.**
