@@ -20,9 +20,49 @@ describe("work execution", () => {
     expect(states).toHaveLength(5);
   });
 
+  it("blocks execution when the decision gate denies execution", () => {
+    const execution = createExecution({
+      taskId: "task-blocked",
+      decision: {
+        classification: "human_decision_required",
+        authorization: "human_decision_required",
+        requiresHumanDecision: true,
+        requiresAuthorization: true,
+        canExecute: false,
+        reason: "Human decision is required before execution.",
+      },
+    });
+
+    expect(execution.status).toBe("blocked");
+  });
+
+  it("fails closed when decision state is inconsistent", () => {
+    const execution = createExecution({
+      taskId: "task-inconsistent",
+      decision: {
+        classification: "proceed",
+        authorization: "blocked",
+        requiresHumanDecision: false,
+        requiresAuthorization: false,
+        canExecute: true,
+        reason: "Inconsistent execution state.",
+      },
+    });
+
+    expect(execution.status).toBe("blocked");
+  });
+
   it("creates a queued execution for a task", () => {
     const execution = createExecution({
       taskId: "task-1",
+      decision: {
+        classification: "proceed",
+        authorization: "not_required",
+        requiresHumanDecision: false,
+        requiresAuthorization: false,
+        canExecute: true,
+        reason: "Work is permitted to execute.",
+      },
     });
 
     expect(execution).toEqual({

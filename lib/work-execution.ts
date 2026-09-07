@@ -1,3 +1,4 @@
+import { evaluateWorkExecutionGate, type WorkDecisionEvaluation } from "./work-decision";
 export type ExecutionStatus =
   | "queued"
   | "running"
@@ -13,11 +14,20 @@ export type WorkExecution = {
 
 export type CreateExecutionInput = {
   taskId: string;
+  decision: WorkDecisionEvaluation;
 };
 
 export function createExecution(
   input: CreateExecutionInput,
 ): WorkExecution {
+  if (!evaluateWorkExecutionGate(input.decision).allowed) {
+    return {
+      id: crypto.randomUUID(),
+      taskId: input.taskId,
+      status: "blocked",
+    };
+  }
+
   return {
     id: crypto.randomUUID(),
     taskId: input.taskId,
