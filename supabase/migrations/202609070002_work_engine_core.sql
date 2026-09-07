@@ -53,3 +53,99 @@ create table if not exists work_task_results (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
+
+alter table works enable row level security;
+alter table work_plans enable row level security;
+alter table work_tasks enable row level security;
+alter table work_executions enable row level security;
+alter table work_task_results enable row level security;
+
+create policy "works own"
+  on works
+  for all
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
+create policy "work_plans own"
+  on work_plans
+  for all
+  using (
+    exists (
+      select 1
+      from works
+      where works.id = work_plans.work_id
+        and works.user_id = auth.uid()
+    )
+  )
+  with check (
+    exists (
+      select 1
+      from works
+      where works.id = work_plans.work_id
+        and works.user_id = auth.uid()
+    )
+  );
+
+create policy "work_tasks own"
+  on work_tasks
+  for all
+  using (
+    exists (
+      select 1
+      from works
+      where works.id = work_tasks.work_id
+        and works.user_id = auth.uid()
+    )
+  )
+  with check (
+    exists (
+      select 1
+      from works
+      where works.id = work_tasks.work_id
+        and works.user_id = auth.uid()
+    )
+  );
+
+create policy "work_executions own"
+  on work_executions
+  for all
+  using (
+    exists (
+      select 1
+      from work_tasks
+      join works on works.id = work_tasks.work_id
+      where work_tasks.id = work_executions.task_id
+        and works.user_id = auth.uid()
+    )
+  )
+  with check (
+    exists (
+      select 1
+      from work_tasks
+      join works on works.id = work_tasks.work_id
+      where work_tasks.id = work_executions.task_id
+        and works.user_id = auth.uid()
+    )
+  );
+
+create policy "work_task_results own"
+  on work_task_results
+  for all
+  using (
+    exists (
+      select 1
+      from work_tasks
+      join works on works.id = work_tasks.work_id
+      where work_tasks.id = work_task_results.task_id
+        and works.user_id = auth.uid()
+    )
+  )
+  with check (
+    exists (
+      select 1
+      from work_tasks
+      join works on works.id = work_tasks.work_id
+      where work_tasks.id = work_task_results.task_id
+        and works.user_id = auth.uid()
+    )
+  );
