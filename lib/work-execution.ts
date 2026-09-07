@@ -33,6 +33,7 @@ export type WorkTaskResult = {
   executionId: string;
   output: string;
   status: TaskResultStatus;
+  verificationStatus: VerificationStatus;
 };
 
 export type CreateTaskResultInput = {
@@ -50,5 +51,23 @@ export function createTaskResult(
     executionId: input.executionId,
     output: input.output,
     status: "succeeded",
+    verificationStatus: "unverified",
+  };
+}
+
+export type VerificationStatus =
+  | "unverified"
+  | "verified"
+  | "verification_failed";
+
+export function setVerificationStatus(
+  result: WorkTaskResult,
+  verificationStatus: VerificationStatus,
+): WorkTaskResult & {
+  verificationStatus: VerificationStatus;
+} {
+  return {
+    ...result,
+    verificationStatus,
   };
 }

@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   createExecution,
   createTaskResult,
+  setVerificationStatus,
   type ExecutionStatus,
+  type VerificationStatus,
 } from "./work-execution";
 
 describe("work execution", () => {
@@ -43,6 +45,7 @@ describe("work execution", () => {
       executionId: "execution-1",
       output: "Research completed",
       status: "succeeded",
+      verificationStatus: "unverified",
     });
   });
 
@@ -53,7 +56,65 @@ describe("work execution", () => {
       output: "Research completed",
     });
 
+    expect(result.status).toBe("succeeded");
+    expect(result.verificationStatus).toBe("unverified");
     expect(result).not.toHaveProperty("verified");
-    expect(result).not.toHaveProperty("verificationStatus");
+  });
+});
+
+
+describe("work execution verification", () => {
+  it("represents all approved verification states", () => {
+    const states: VerificationStatus[] = [
+      "unverified",
+      "verified",
+      "verification_failed",
+    ];
+
+    expect(states).toHaveLength(3);
+  });
+
+  it("starts every task result as unverified", () => {
+    const result = createTaskResult({
+      taskId: "task-1",
+      executionId: "execution-1",
+      output: "Research completed",
+    });
+
+    expect(result.verificationStatus).toBe("unverified");
+  });
+
+  it("allows a result to become explicitly verified", () => {
+    const result = createTaskResult({
+      taskId: "task-1",
+      executionId: "execution-1",
+      output: "Research completed",
+    });
+
+    const verified = setVerificationStatus(result, "verified");
+
+    expect(verified.verificationStatus).toBe("verified");
+  });
+
+  it("allows verification to fail explicitly", () => {
+    const result = createTaskResult({
+      taskId: "task-1",
+      executionId: "execution-1",
+      output: "Research completed",
+    });
+
+    const failed = setVerificationStatus(result, "verification_failed");
+
+    expect(failed.verificationStatus).toBe("verification_failed");
+  });
+
+  it("does not report a result as verified without explicit verification", () => {
+    const result = createTaskResult({
+      taskId: "task-1",
+      executionId: "execution-1",
+      output: "Research completed",
+    });
+
+    expect(result.verificationStatus).not.toBe("verified");
   });
 });
