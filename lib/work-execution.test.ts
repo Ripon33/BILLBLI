@@ -36,6 +36,22 @@ describe("work execution", () => {
     expect(execution.status).toBe("blocked");
   });
 
+  it("does not execute work with approval that is not authorization", () => {
+    const execution = createExecution({
+      taskId: "task-approved-only",
+      decision: {
+        classification: "authorization_required",
+        authorization: "approved",
+        requiresHumanDecision: false,
+        requiresAuthorization: true,
+        canExecute: true,
+        reason: "Approval exists but explicit authorization is still required.",
+      },
+    });
+
+    expect(execution.status).toBe("blocked");
+  });
+
   it("fails closed when decision state is inconsistent", () => {
     const execution = createExecution({
       taskId: "task-inconsistent",
@@ -46,6 +62,22 @@ describe("work execution", () => {
         requiresAuthorization: false,
         canExecute: true,
         reason: "Inconsistent execution state.",
+      },
+    });
+
+    expect(execution.status).toBe("blocked");
+  });
+
+  it("does not execute restricted work even when legacy authorization is authorized", () => {
+    const execution = createExecution({
+      taskId: "task-restricted",
+      decision: {
+        classification: "authorization_required",
+        authorization: "authorized",
+        requiresHumanDecision: false,
+        requiresAuthorization: true,
+        canExecute: false,
+        reason: "Restricted work cannot execute through ordinary execution.",
       },
     });
 

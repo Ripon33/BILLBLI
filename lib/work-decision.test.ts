@@ -329,6 +329,45 @@ describe("Work Engine decision integration", () => {
     expect(evaluation.canExecute).toBe(false);
   });
 
+  it("does not erase a human decision requirement when autonomy changes to auto", () => {
+    const work = {
+      id: "work-boundary",
+      title: "Terminate employee",
+      goal: "End the employee relationship.",
+      status: "draft",
+      priority: "normal",
+      autonomy: "auto" as const,
+      authorization: "not_required" as const,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const evaluation = evaluateWorkDecision(work);
+
+    expect(evaluation.classification).toBe("human_decision_required");
+    expect(evaluation.canExecute).toBe(false);
+  });
+
+  it("does not let client authorization bypass a human decision boundary", () => {
+    const work = {
+      id: "work-client-auth",
+      title: "Terminate employee",
+      goal: "Decide whether the employee should be terminated.",
+      status: "draft",
+      priority: "normal",
+      autonomy: "auto" as const,
+      authorization: "authorized" as const,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    const evaluation = evaluateWorkDecision(work);
+
+    expect(evaluation.classification).toBe("human_decision_required");
+    expect(evaluation.authorization).toBe("human_decision_required");
+    expect(evaluation.canExecute).toBe(false);
+  });
+
   it("requires authorization for approval autonomy", () => {
     const work = {
       id: "work-3",
