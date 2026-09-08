@@ -15,20 +15,46 @@ describe("account settings", () => {
     expect(html).toContain("permanent");
   });
 
-  it("does not show the permanent deletion confirmation before explicit confirmation", () => {
+  it("does not show permanent deletion confirmation initially", () => {
     const html = renderToStaticMarkup(<AccountSettings />);
 
     expect(html).not.toContain("Delete my account");
     expect(html).not.toContain("This action cannot be undone");
   });
 
-  it("opens confirmation only from the delete-account action", () => {
+  it("keeps account deletion behind explicit confirmation", () => {
     const source = readFileSync(componentPath, "utf8");
 
-    expect(source).toContain(
-      'onClick={() => setConfirming(true)}',
-    );
+    expect(source).toContain("setConfirming(true)");
     expect(source).toContain("Delete my account");
     expect(source).toContain("This action cannot be undone");
+    expect(source).toContain("onClick={handleDeleteAccount}");
+  });
+
+  it("wires sign out to the browser Supabase auth client", () => {
+    const source = readFileSync(componentPath, "utf8");
+
+    expect(source).toContain('createClient } from "@/lib/supabase/client"');
+    expect(source).toContain("supabase.auth.signOut()");
+  });
+
+  it("calls the server account-deletion endpoint", () => {
+    const source = readFileSync(componentPath, "utf8");
+
+    expect(source).toContain('fetch("/api/account/delete"');
+    expect(source).toContain('method: "POST"');
+  });
+
+  it("does not import the server-only account deletion service", () => {
+    const source = readFileSync(componentPath, "utf8");
+
+    expect(source).not.toContain('deleteCurrentAccount');
+    expect(source).not.toContain("@/lib/auth/account-deletion");
+  });
+
+  it("redirects to sign-in after successful authentication actions", () => {
+    const source = readFileSync(componentPath, "utf8");
+
+    expect(source).toContain('window.location.assign("/sign-in")');
   });
 });
