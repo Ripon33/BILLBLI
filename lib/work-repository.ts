@@ -94,6 +94,22 @@ export function createWorkRepository(
       return toWork(data as WorkRow);
     },
 
+    async listWorks(): Promise<BillbliWork[]> {
+      const supabase = await getSupabase();
+      const userId = await getUserId();
+
+      const { data, error } = await supabase
+        .from("works")
+        .select()
+        .eq("user_id", userId);
+
+      if (error) {
+        throw new Error(`Failed to list Work: ${error.message}`);
+      }
+
+      return (data ?? []).map((row) => toWork(row as WorkRow));
+    },
+
     async getWork(id: string): Promise<BillbliWork | null> {
       const supabase = await getSupabase();
       const userId = await getUserId();

@@ -28,37 +28,46 @@ function createFakeSupabase() {
 
       select() {
         return {
-          eq(_column: string, value: string) {
-            const builder = {
-              eq(_nextColumn: string, nextValue: string) {
-                return {
-                  single: async () => {
-                    const row = rows.get(value);
-                    const matchesUser =
-                      row && row.user_id === nextValue;
+          eq(column: string, value: string) {
+            const filteredRows = [...rows.values()].filter(
+              (row) => row[column] === value,
+            );
 
-                    return {
-                      data: matchesUser ? row : null,
-                      error: matchesUser
-                        ? null
-                        : { message: "Work not found" },
-                    };
-                  },
+            return {
+              eq(nextColumn: string, nextValue: string) {
+                const matchingRows = filteredRows.filter(
+                  (row) => row[nextColumn] === nextValue,
+                );
+
+                return {
+                  single: async () => ({
+                    data: matchingRows[0] ?? null,
+                    error: matchingRows[0]
+                      ? null
+                      : { message: "Work not found" },
+                  }),
                 };
               },
-              single: async () => {
-                const row = rows.get(value);
 
-                return {
-                  data: row ?? null,
-                  error: row
-                    ? null
-                    : { message: "Work not found" },
-                };
+              single: async () => ({
+                data: filteredRows[0] ?? null,
+                error: filteredRows[0]
+                  ? null
+                  : { message: "Work not found" },
+              }),
+
+              then(
+                resolve: (value: {
+                  data: Record<string, unknown>[];
+                  error: null;
+                }) => unknown,
+              ) {
+                return resolve({
+                  data: filteredRows,
+                  error: null,
+                });
               },
             };
-
-            return builder;
           },
         };
       },
@@ -148,6 +157,35 @@ describe("Work Engine repository", () => {
       business: "BILLBLI",
       audience: "small businesses",
     });
+  });
+
+  it("lists only Work records owned by the authenticated user", async () => {
+    const firstWork = createWork({
+      title: "Owned worker",
+      goal: "Support the authenticated user",
+    });
+
+    const secondWork = createWork({
+      title: "Another owned worker",
+      goal: "Continue persistent work",
+    });
+
+    const supabase = createFakeSupabase();
+
+    const repository = createWorkRepository({
+      supabase,
+      getAuthenticatedUserId: async () => "user-123",
+    });
+
+    await repository.createWork(firstWork);
+    await repository.createWork(secondWork);
+
+    const works = await repository.listWorks();
+
+    expect(works).toHaveLength(2);
+    expect(works.map((work) => work.id)).toEqual(
+      expect.arrayContaining([firstWork.id, secondWork.id]),
+    );
   });
 
   it("loads a Work by id", async () => {

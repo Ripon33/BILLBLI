@@ -31,6 +31,36 @@ function isAutonomy(value: unknown): value is WorkAutonomy {
   );
 }
 
+export async function GET() {
+  try {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json(
+        { error: "Authentication required." },
+        { status: 401 },
+      );
+    }
+
+    const repository = createWorkRepository({
+      supabase,
+      getAuthenticatedUserId: async () => user.id,
+    });
+
+    const works = await repository.listWorks();
+
+    return NextResponse.json({ works });
+  } catch {
+    return NextResponse.json(
+      { error: "Unable to load Work records." },
+      { status: 500 },
+    );
+  }
+}
+
 export async function POST(req: Request) {
   try {
     let body: unknown;

@@ -23,7 +23,7 @@ vi.mock("@/lib/work-repository", () => ({
   createWorkRepository: mockCreateWorkRepository,
 }));
 
-import { POST } from "./route";
+import { GET, POST } from "./route";
 
 describe("POST /api/work", () => {
   it("rejects malformed JSON with a 400 response", async () => {
@@ -272,4 +272,83 @@ describe("POST /api/work", () => {
     });
   });
 
+});
+
+
+describe("GET /api/work", () => {
+  it("lists Work records for the authenticated user", async () => {
+    const works = [
+      {
+        id: "worker-1",
+        title: "Maya",
+        goal: "Grow BILLBLI's digital presence",
+        status: "draft",
+        priority: "normal",
+        autonomy: "review",
+        authorization: "not_required",
+        workerType: "digital_marketer",
+        workerName: "Maya",
+        workerContext: {
+          workerType: "digital_marketer",
+          workerName: "Maya",
+        },
+        createdAt: "2026-09-08T00:00:00.000Z",
+        updatedAt: "2026-09-08T00:00:00.000Z",
+      },
+    ];
+
+    const mockRepositoryListWorks = vi.fn(async () => works);
+
+    mockCreateWorkRepository.mockReturnValue({
+      listWorks: mockRepositoryListWorks,
+    });
+
+    const request = new Request("http://localhost/api/work", {
+      method: "GET",
+    });
+
+    const response = await GET(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data).toEqual({ works });
+
+    expect(mockCreateWorkRepository).toHaveBeenCalledWith(
+      expect.objectContaining({
+        getAuthenticatedUserId: expect.any(Function),
+      }),
+    );
+
+    const repositoryOptions = mockCreateWorkRepository.mock.calls.at(-1)?.[0];
+
+    await expect(repositoryOptions.getAuthenticatedUserId()).resolves.toBe(
+      "authenticated-user-123",
+    );
+
+    expect(mockRepositoryListWorks).toHaveBeenCalledOnce();
+  });
+
+  it("rejects an unauthenticated GET request", async () => {
+    const { createClient } = await import("@/lib/supabase/server");
+
+    vi.mocked(createClient).mockResolvedValueOnce({
+      auth: {
+        getUser: vi.fn(async () => ({
+          data: { user: null },
+          error: null,
+        })),
+      },
+    } as never);
+
+    const request = new Request("http://localhost/api/work", {
+      method: "GET",
+    });
+
+    const response = await GET(request);
+
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({
+      error: "Authentication required.",
+    });
+  });
 });
