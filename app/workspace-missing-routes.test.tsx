@@ -12,7 +12,7 @@ import ProfilePage from "./workspace/profile/page";
 describe("BILLBLI workspace destinations", () => {
   const routes = [
     ["Research", ResearchPage],
-    ["Study", StudyPage],
+    ["Structured learning", StudyPage],
     ["Decisions", DecisionsPage],
     ["Tasks", TasksPage],
     ["History", HistoryPage],
