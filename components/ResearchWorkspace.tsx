@@ -1,14 +1,81 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { AskBillbliComposer } from "@/components/AskBillbliComposer";
 import DecisionBox, { type ResearchResult } from "@/components/DecisionBox";
 import { submitResearchWorkspace } from "@/lib/research-workspace-submit";
+import {
+  createSpeechCommand,
+  type SpeechRecognitionLike,
+} from "@/lib/speech-command";
 
 type ResearchSubmit = (
   question: string,
 ) => Promise<ResearchResult>;
+
+export type ResearchWorkspaceSpeechState =
+  | "idle"
+  | "listening"
+  | "transcribing";
+
+export function createResearchWorkspaceSpeechController(
+  setState: (state: ResearchWorkspaceSpeechState) => void,
+  onTranscript: (transcript: string) => void = () => {},
+) {
+  return {
+    start() {
+      setState("listening");
+    },
+
+    handleTranscript(transcript: string) {
+      setState("transcribing");
+      onTranscript(transcript);
+    },
+
+    handleEnd() {
+      setState("idle");
+    },
+  };
+}
+
+export function createResearchWorkspaceSpeechCallbacks(
+  setState: (state: ResearchWorkspaceSpeechState) => void,
+  onTranscript: (transcript: string) => void,
+) {
+  const controller = createResearchWorkspaceSpeechController(
+    setState,
+    onTranscript,
+  );
+
+  return {
+    onStartSpeaking: controller.start,
+    onTranscript: controller.handleTranscript,
+    onEnd: controller.handleEnd,
+  };
+}
+
+export function createResearchWorkspaceSpeechCommand(
+  createRecognition: () => SpeechRecognitionLike,
+  onTranscript: (transcript: string) => void,
+  onEnd: () => void = () => {},
+) {
+  return createSpeechCommand(createRecognition, onTranscript, onEnd);
+}
+
+export function createResearchWorkspaceTranscriptHandler(
+  onChange: (value: string) => void,
+) {
+  return (transcript: string) => {
+    const trimmed = transcript.trim();
+
+    if (!trimmed) {
+      return;
+    }
+
+    onChange(trimmed);
+  };
+}
 
 export function createResearchWorkspaceHandler(
   submitResearch: ResearchSubmit,
@@ -31,6 +98,77 @@ export function ResearchWorkspace({
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [speakingState, setSpeakingState] =
+    useState<ResearchWorkspaceSpeechState>("idle");
+  const speechCommandRef = useRef<ReturnType<
+    typeof createResearchWorkspaceSpeechCommand
+  > | null>(null);
+
+  const speechCallbacks = createResearchWorkspaceSpeechCallbacks(
+    setSpeakingState,
+    createResearchWorkspaceTranscriptHandler(setQuestion),
+  );
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    type BrowserSpeechRecognition = SpeechRecognitionLike & {
+      lang: string;
+      interimResults: boolean;
+      continuous: boolean;
+    };
+
+    type SpeechRecognitionConstructor = new () => BrowserSpeechRecognition;
+
+    const speechWindow = window as Window & {
+      SpeechRecognition?: SpeechRecognitionConstructor;
+      webkitSpeechRecognition?: SpeechRecognitionConstructor;
+    };
+
+    const SpeechRecognition =
+      speechWindow.SpeechRecognition ??
+      speechWindow.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+
+    recognition.lang = "en-US";
+    recognition.interimResults = false;
+    recognition.continuous = false;
+
+    speechCommandRef.current = createResearchWorkspaceSpeechCommand(
+      () => recognition,
+      speechCallbacks.onTranscript,
+      speechCallbacks.onEnd,
+    );
+
+    return () => {
+      recognition.stop();
+      speechCommandRef.current = null;
+    };
+  }, []);
+
+  function handleStartSpeaking() {
+    if (!speechCommandRef.current) {
+      return;
+    }
+
+    speechCallbacks.onStartSpeaking();
+    speechCommandRef.current.start();
+  }
+
+  function handleStopSpeaking() {
+    if (!speechCommandRef.current) {
+      return;
+    }
+
+    speechCommandRef.current.stop();
+  }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -68,6 +206,9 @@ export function ResearchWorkspace({
         onChange={setQuestion}
         onSubmit={handleSubmit}
         loading={loading}
+        speakingState={speakingState}
+        onStartSpeaking={handleStartSpeaking}
+        onStopSpeaking={handleStopSpeaking}
       />
 
       {error ? (

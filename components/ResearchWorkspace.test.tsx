@@ -1,6 +1,39 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { ResearchWorkspace } from "./ResearchWorkspace";
+import { ResearchWorkspace, createResearchWorkspaceTranscriptHandler, createResearchWorkspaceSpeechCommand, createResearchWorkspaceSpeechController, createResearchWorkspaceSpeechCallbacks } from "./ResearchWorkspace";
+
+describe("ResearchWorkspace speaking command", () => {
+  it("applies a completed speaking transcript to the research question", () => {
+    const onChange = vi.fn();
+
+    const applyTranscript = createResearchWorkspaceTranscriptHandler(
+      onChange,
+    );
+
+    applyTranscript("Compare supplier A and supplier B");
+
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledWith(
+      "Compare supplier A and supplier B",
+    );
+  });
+
+  it("does not submit when a speaking transcript is applied", () => {
+    const onChange = vi.fn();
+    const onSubmit = vi.fn();
+
+    const applyTranscript = createResearchWorkspaceTranscriptHandler(
+      onChange,
+    );
+
+    applyTranscript("Should we choose supplier A?");
+
+    expect(onChange).toHaveBeenCalledWith(
+      "Should we choose supplier A?",
+    );
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+});
 
 describe("ResearchWorkspace", () => {
   it("renders the core research interaction", () => {
@@ -69,5 +102,157 @@ describe("ResearchWorkspace submission integration", () => {
         confidence: 90,
       },
     });
+  });
+});
+
+describe("ResearchWorkspace speaking lifecycle", () => {
+  it("starts with speaking idle state", () => {
+    const html = renderToStaticMarkup(<ResearchWorkspace />);
+
+    expect(html).toContain('aria-label="Use speaking command"');
+    expect(html).toContain(">Speak<");
+  });
+
+  it("exposes speaking state to the composer", () => {
+    const html = renderToStaticMarkup(<ResearchWorkspace />);
+
+    expect(html).toContain("Ask BILLBLI");
+    expect(html).not.toContain("Listening");
+    expect(html).not.toContain("Transcribing");
+  });
+});
+
+describe("ResearchWorkspace speech controller", () => {
+  it("creates a speech command that starts and stops recognition", () => {
+    const recognition = {
+      start: vi.fn(),
+      stop: vi.fn(),
+      onresult: null,
+      onend: null,
+      onerror: null,
+    };
+
+    const createRecognition = vi.fn(() => recognition);
+
+    const speech = createResearchWorkspaceSpeechCommand(
+      createRecognition,
+      vi.fn(),
+    );
+
+    speech.start();
+    speech.stop();
+
+    expect(createRecognition).toHaveBeenCalledTimes(1);
+    expect(recognition.start).toHaveBeenCalledTimes(1);
+    expect(recognition.stop).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe("ResearchWorkspace speech lifecycle state", () => {
+  it("transitions from idle to listening when speech starts", () => {
+    const setState = vi.fn();
+
+    const controller = createResearchWorkspaceSpeechController(setState);
+
+    controller.start();
+
+    expect(setState).toHaveBeenCalledWith("listening");
+  });
+
+  it("transitions from listening to transcribing when a transcript arrives", () => {
+    const setState = vi.fn();
+    const onTranscript = vi.fn();
+
+    const controller = createResearchWorkspaceSpeechController(
+      setState,
+      onTranscript,
+    );
+
+    controller.start();
+    controller.handleTranscript("Compare supplier A and supplier B");
+
+    expect(setState).toHaveBeenLastCalledWith("transcribing");
+    expect(onTranscript).toHaveBeenCalledWith(
+      "Compare supplier A and supplier B",
+    );
+  });
+
+  it("returns to idle when recognition ends", () => {
+    const setState = vi.fn();
+
+    const controller = createResearchWorkspaceSpeechController(setState);
+
+    controller.start();
+    controller.handleEnd();
+
+    expect(setState).toHaveBeenLastCalledWith("idle");
+  });
+
+  it("does not submit when speech produces a transcript", () => {
+    const setState = vi.fn();
+    const onTranscript = vi.fn();
+    const onSubmit = vi.fn();
+
+    const controller = createResearchWorkspaceSpeechController(
+      setState,
+      onTranscript,
+    );
+
+    controller.handleTranscript("Should we choose supplier A?");
+
+    expect(onTranscript).toHaveBeenCalledWith(
+      "Should we choose supplier A?",
+    );
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+});
+
+describe("ResearchWorkspace speech command integration", () => {
+  it("connects speech results to the research question without submitting", () => {
+    const onChange = vi.fn();
+    const onSubmit = vi.fn();
+    const setState = vi.fn();
+
+    const controller = createResearchWorkspaceSpeechController(
+      setState,
+      createResearchWorkspaceTranscriptHandler(onChange),
+    );
+
+    controller.start();
+    controller.handleTranscript("Should we choose supplier A?");
+
+    expect(setState).toHaveBeenNthCalledWith(1, "listening");
+    expect(setState).toHaveBeenNthCalledWith(2, "transcribing");
+    expect(onChange).toHaveBeenCalledWith(
+      "Should we choose supplier A?",
+    );
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+});
+
+describe("ResearchWorkspace speech wiring", () => {
+  it("creates speech callbacks for the composer", () => {
+    const setState = vi.fn();
+    const onChange = vi.fn();
+
+    const callbacks = createResearchWorkspaceSpeechCallbacks(
+      setState,
+      createResearchWorkspaceTranscriptHandler(onChange),
+    );
+
+    callbacks.onStartSpeaking();
+
+    expect(setState).toHaveBeenCalledWith("listening");
+
+    callbacks.onTranscript("Compare supplier A and supplier B");
+
+    expect(setState).toHaveBeenLastCalledWith("transcribing");
+    expect(onChange).toHaveBeenCalledWith(
+      "Compare supplier A and supplier B",
+    );
+
+    callbacks.onEnd();
+
+    expect(setState).toHaveBeenLastCalledWith("idle");
   });
 });

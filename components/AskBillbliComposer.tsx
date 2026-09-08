@@ -20,6 +20,45 @@ export type AskBillbliContext = {
   onChange?: (value: string) => void;
 };
 
+export type AskBillbliAttachment = {
+  id: string;
+  name: string;
+};
+
+export type AskBillbliSpeakingState =
+  | "idle"
+  | "listening"
+  | "transcribing";
+
+export function applyAskBillbliTranscript(
+  transcript: string,
+  onChange: (value: string) => void,
+) {
+  const trimmed = transcript.trim();
+
+  if (!trimmed) {
+    return;
+  }
+
+  onChange(trimmed);
+}
+
+export function getAskBillbliSpeakingAction(
+  state: AskBillbliSpeakingState,
+  onStartSpeaking: () => void,
+  onStopSpeaking: () => void,
+) {
+  if (state === "idle") {
+    return onStartSpeaking;
+  }
+
+  if (state === "listening") {
+    return onStopSpeaking;
+  }
+
+  return () => {};
+}
+
 type AskBillbliComposerProps = {
   value: string;
   onChange: (value: string) => void;
@@ -30,6 +69,11 @@ type AskBillbliComposerProps = {
   context?: AskBillbliContext;
   footerContent?: ReactNode;
   placeholder?: string;
+  attachments?: AskBillbliAttachment[];
+  onRemoveAttachment?: (id: string) => void;
+  speakingState?: AskBillbliSpeakingState;
+  onStartSpeaking?: () => void;
+  onStopSpeaking?: () => void;
 };
 
 export function shouldSubmitAskBillbliKeyboardEvent(
@@ -55,6 +99,11 @@ export function AskBillbliComposer({
   context,
   footerContent,
   placeholder = "What are you deciding?",
+  attachments = [],
+  onRemoveAttachment,
+  speakingState = "idle",
+  onStartSpeaking = () => {},
+  onStopSpeaking = () => {},
 }: AskBillbliComposerProps) {
   const inputId = useId();
   const hintId = `${inputId}-hint`;
@@ -62,6 +111,12 @@ export function AskBillbliComposer({
 
   function handleChange(event: ChangeEvent<HTMLTextAreaElement>) {
     onChange(event.target.value);
+  }
+
+  function handleAttachmentChange(event: ChangeEvent<HTMLInputElement>) {
+    // File persistence/upload is intentionally handled by the workspace.
+    // The shared composer currently exposes the selection control only.
+    event.currentTarget.value = "";
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
@@ -101,16 +156,96 @@ export function AskBillbliComposer({
           className="min-h-[96px] w-full resize-none border-0 bg-transparent px-4 py-4 text-base leading-7 text-zinc-950 outline-none placeholder:text-zinc-300 disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-[112px] sm:text-lg"
         />
 
+        {attachments.length > 0 && (
+          <div
+            aria-label="Attachments"
+            className="flex flex-wrap gap-2 border-t border-zinc-100 px-3 pt-3"
+          >
+            {attachments.map((attachment) => (
+              <div
+                key={attachment.id}
+                className="flex min-w-0 items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 px-2.5 py-1.5 text-xs text-zinc-700"
+              >
+                <span className="min-w-0 max-w-[220px] truncate">
+                  {attachment.name}
+                </span>
+
+                {onRemoveAttachment && (
+                  <button
+                    type="button"
+                    aria-label={`Remove ${attachment.name}`}
+                    onClick={() => onRemoveAttachment(attachment.id)}
+                    disabled={disabled || loading}
+                    className="shrink-0 text-zinc-400 hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="flex flex-col gap-3 border-t border-zinc-100 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <label
+              className={[
+                "flex cursor-pointer items-center rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-medium text-zinc-600 transition hover:border-zinc-300 hover:text-zinc-900",
+                disabled || loading
+                  ? "cursor-not-allowed opacity-50"
+                  : "",
+              ].join(" ")}
+            >
+              <span aria-hidden="true" className="mr-1.5 text-base leading-none">
+                +
+              </span>
+              Attach
+              <input
+                type="file"
+                aria-label="Attach files"
+                multiple
+                disabled={disabled || loading}
+                onChange={handleAttachmentChange}
+                className="sr-only"
+              />
+            </label>
+
             <span
               id={hintId}
               className="text-xs text-zinc-400"
             >
               {loading
                 ? "BILLBLI is researching..."
-                : "Ask a decision, not just a question."}
+                : speakingState === "listening"
+                  ? "Listening..."
+                  : speakingState === "transcribing"
+                    ? "Transcribing..."
+                    : "Ask a decision, not just a question."}
             </span>
+
+            <button
+              type="button"
+              aria-label={
+                speakingState === "listening"
+                  ? "Stop speaking command"
+                  : "Use speaking command"
+              }
+              aria-live="polite"
+              disabled={disabled || loading || speakingState === "transcribing"}
+              onClick={getAskBillbliSpeakingAction(
+                speakingState,
+                onStartSpeaking,
+                onStopSpeaking,
+              )}
+              className="flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-medium text-zinc-600 transition hover:border-zinc-300 hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <span aria-hidden="true">🎙</span>
+              {speakingState === "listening"
+                ? "Listening"
+                : speakingState === "transcribing"
+                  ? "Transcribing"
+                  : "Speak"}
+            </button>
 
             {context && (
               <label className="flex items-center gap-2 text-xs text-zinc-500">
