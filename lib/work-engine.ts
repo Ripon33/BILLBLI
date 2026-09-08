@@ -28,6 +28,9 @@ export type BillbliWork = {
   priority: WorkPriority;
   autonomy: WorkAutonomy;
   authorization: WorkAuthorization;
+  workerType?: import("./worker-domain").WorkerType;
+  workerName?: string;
+  workerContext?: Record<string, unknown>;
   createdAt: string;
   updatedAt: string;
 };

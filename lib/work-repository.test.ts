@@ -109,6 +109,47 @@ describe("Work Engine repository", () => {
     expect(loaded?.id).toBe(work.id);
   });
 
+  it("persists and loads persistent worker identity and context", async () => {
+    const work = createWork({
+      title: "Marketing worker",
+      goal: "Grow the company's digital presence",
+    });
+
+    const worker = {
+      ...work,
+      workerType: "digital_marketer" as const,
+      workerName: "Maya",
+      workerContext: {
+        business: "BILLBLI",
+        audience: "small businesses",
+      },
+    };
+
+    const supabase = createFakeSupabase();
+
+    const repository = createWorkRepository({
+      supabase,
+      getAuthenticatedUserId: async () => "user-123",
+    });
+
+    const created = await repository.createWork(worker);
+    const loaded = await repository.getWork(worker.id);
+
+    expect(created.workerType).toBe("digital_marketer");
+    expect(created.workerName).toBe("Maya");
+    expect(created.workerContext).toEqual({
+      business: "BILLBLI",
+      audience: "small businesses",
+    });
+
+    expect(loaded?.workerType).toBe("digital_marketer");
+    expect(loaded?.workerName).toBe("Maya");
+    expect(loaded?.workerContext).toEqual({
+      business: "BILLBLI",
+      audience: "small businesses",
+    });
+  });
+
   it("loads a Work by id", async () => {
     const work = createWork({
       title: "Research competitors",

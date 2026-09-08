@@ -39,4 +39,24 @@ describe("Work Engine persistence schema", () => {
     expect(source).toContain("autonomy_level text not null");
     expect(source).toContain("execution_metadata jsonb");
   });
+
+  it("defines persistent AI Worker fields on works", () => {
+    const migrationsDir = resolve(process.cwd(), "supabase/migrations");
+
+    const migration = [
+      "202609080001_persistent_ai_workers.sql",
+    ].find((name) => existsSync(resolve(migrationsDir, name)));
+
+    expect(migration).toBeDefined();
+
+    const source = readFileSync(
+      resolve(migrationsDir, migration!),
+      "utf8",
+    );
+
+    expect(source).toContain("alter table works");
+    expect(source).toContain("add column if not exists worker_type text");
+    expect(source).toContain("add column if not exists worker_name text");
+    expect(source).toContain("add column if not exists worker_context jsonb");
+  });
 });

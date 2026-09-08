@@ -16,6 +16,9 @@ type WorkRow = {
   goal: string;
   status: BillbliWork["status"];
   priority: BillbliWork["priority"];
+  worker_type: BillbliWork["workerType"];
+  worker_name: BillbliWork["workerName"];
+  worker_context: BillbliWork["workerContext"];
   created_at: string;
   updated_at: string;
 };
@@ -29,6 +32,9 @@ function toWork(row: WorkRow): BillbliWork {
     priority: row.priority,
     autonomy: "auto",
     authorization: "not_required",
+      ...(row.worker_type ? { workerType: row.worker_type } : {}),
+      ...(row.worker_name ? { workerName: row.worker_name } : {}),
+      ...(row.worker_context ? { workerContext: row.worker_context } : {}),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -72,6 +78,9 @@ export function createWorkRepository(
           goal: work.goal,
           status: work.status,
           priority: work.priority,
+            worker_type: work.workerType ?? null,
+            worker_name: work.workerName ?? null,
+            worker_context: work.workerContext ?? null,
           created_at: work.createdAt,
           updated_at: work.updatedAt,
         })
