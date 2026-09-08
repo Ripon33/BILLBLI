@@ -39,6 +39,9 @@ export type CreateWorkInput = {
   title: string;
   goal: string;
   autonomy?: WorkAutonomy;
+  workerType?: import("./worker-domain").WorkerType;
+  workerName?: string;
+  workerContext?: Record<string, unknown>;
 };
 
 export function createWork(input: CreateWorkInput): BillbliWork {
@@ -56,6 +59,9 @@ export function createWork(input: CreateWorkInput): BillbliWork {
       (input.autonomy ?? "auto") === "restricted"
         ? "required"
         : "not_required",
+    workerType: input.workerType,
+    workerName: input.workerName,
+    workerContext: input.workerContext,
     createdAt: now,
     updatedAt: now,
   };
