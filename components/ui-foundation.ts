@@ -32,12 +32,6 @@ export const BILLBLI_UI_TOKENS = {
     card: "0 1px 2px rgb(0 0 0 / 0.05)",
     none: "none",
   },
-  radius: {
-    sm: "8px",
-    md: "12px",
-    lg: "16px",
-    full: "9999px",
-  },
   radii: {
     sm: "8px",
     md: "12px",
