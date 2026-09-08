@@ -1,4 +1,3 @@
-import AuthNav from "@/components/AuthNav";
 import { requireUser } from "@/lib/supabase/auth";
 
 export const dynamic = "force-dynamic";
@@ -10,10 +9,5 @@ export default async function WorkspaceLayout({
 }) {
   await requireUser();
 
-  return (
-    <>
-      <AuthNav />
-      {children}
-    </>
-  );
+  return children;
 }
