@@ -40,7 +40,7 @@ import {
 import { deleteCurrentResult } from "@/lib/current-result-delete";
 import { copyResult } from "@/lib/result-copy";
 import type { BillbliTask } from "@/lib/task-engine";
-import BillbliSidebar from "@/components/BillbliSidebar";
+import BillbliShell from "@/components/BillbliShell";
 
 type Source = {
   title?: string;
@@ -332,16 +332,14 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-[#f7f7f5] text-zinc-950">
-      <div className="flex min-h-screen">
-        <BillbliSidebar
-          pathname={pathname}
-          collapsed={sidebarCollapsed}
-          mobileOpen={sidebarOpen}
-          onCollapse={() => setSidebarCollapsedPreference(true)}
-          onExpand={() => setSidebarCollapsedPreference(false)}
-          onCloseMobile={() => setSidebarOpen(false)}
-          recentContent={
+    <BillbliShell
+      pathname={pathname}
+      sidebarCollapsed={sidebarCollapsed}
+      mobileSidebarOpen={sidebarOpen}
+      onCollapseSidebar={() => setSidebarCollapsedPreference(true)}
+      onExpandSidebar={() => setSidebarCollapsedPreference(false)}
+      onCloseMobileSidebar={() => setSidebarOpen(false)}
+      recentContent={
             <>
               <div className="px-2 pb-3 text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
                 Recent research
@@ -451,21 +449,8 @@ export default function Home() {
                 )}
               </div>
             </>
-          }
-        />
-
-        {sidebarOpen && (
-          <button
-            type="button"
-            aria-label="Close sidebar"
-            onClick={() => setSidebarOpen(false)}
-            className="fixed inset-0 z-30 bg-black/10 lg:hidden"
-          />
-        )}
-
-        {/* MAIN */}
-        <main className="min-w-0 flex-1">
-          {/* TOP BAR */}
+      }
+      utilityContent={
           <header className="sticky top-0 z-20 flex h-[76px] items-center justify-between border-b border-zinc-200 bg-white/90 px-5 backdrop-blur md:px-8">
             <div className="flex items-center gap-3">
               <button
@@ -487,6 +472,8 @@ export default function Home() {
               + New research
             </button>
           </header>
+      }
+    >
 
           {/* CONTENT */}
           <div className="mx-auto w-full max-w-[1180px] px-5 py-10 md:px-8 md:py-14">
@@ -644,9 +631,8 @@ export default function Home() {
               <span>Evidence-first decision intelligence</span>
             </div>
           </footer>
-        </main>
-      </div>
-    </div>
+
+    </BillbliShell>
   );
 }
 
