@@ -6,6 +6,7 @@ import DecisionBox from "@/components/DecisionBox";
 import StudyBox from "@/components/StudyBox";
 import TaskBox from "@/components/TaskBox";
 import WorkCreationPanel from "@/components/WorkCreationPanel";
+import { AskBillbliComposer } from "@/components/AskBillbliComposer";
 import { ResultActions } from "@/components/result-actions";
 import type { StudyResponse } from "@/lib/study-response";
 import {
@@ -496,31 +497,14 @@ export default function Home() {
                   can understand.
                 </p>
 
-                <form onSubmit={handleSubmit} className="mt-10">
-                  <div className="rounded-2xl border border-zinc-300 bg-white p-2 shadow-[0_12px_40px_rgba(0,0,0,0.06)]">
-                    <textarea
-                      value={question}
-                      onChange={(event) => setQuestion(event.target.value)}
-                      placeholder="What are you deciding?"
-                      rows={4}
-                      className="w-full resize-none border-0 bg-transparent px-4 py-3 text-lg outline-none placeholder:text-zinc-300"
-                    />
-
-                    <div className="flex items-center justify-between border-t border-zinc-100 px-3 pt-3">
-                      <span className="text-xs text-zinc-400">
-                        Ask a decision, not just a question.
-                      </span>
-
-                      <button
-                        type="submit"
-                        disabled={!question.trim()}
-                        className="rounded-xl bg-zinc-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-40"
-                      >
-                        Research & Decide →
-                      </button>
-                    </div>
-                  </div>
-                </form>
+                <div className="mt-10">
+                  <AskBillbliComposer
+                    value={question}
+                    onChange={setQuestion}
+                    onSubmit={handleSubmit}
+                    loading={loading}
+                  />
+                </div>
 
                 <div className="mt-8 grid grid-cols-1 gap-3 text-xs text-zinc-500 sm:grid-cols-3">
                   <Feature label="Research" value="Multiple sources" />
