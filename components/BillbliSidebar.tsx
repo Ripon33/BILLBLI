@@ -11,6 +11,7 @@ const navigation = [
   { href: "/workspace/decisions", label: "Decisions", icon: "✓" },
   { href: "/workspace/tasks", label: "Tasks", icon: "□" },
   { href: "/workspace/history", label: "History", icon: "↺" },
+  { href: "/workspace/workers", label: "AI Workforce", icon: "◆" },
 ];
 
 const secondaryNavigation = [

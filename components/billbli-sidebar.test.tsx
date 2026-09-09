@@ -15,6 +15,7 @@ describe("BILLBLI sidebar", () => {
     expect(html).toContain(">Decisions<");
     expect(html).toContain(">Tasks<");
     expect(html).toContain(">History<");
+    expect(html).toContain(">AI Workforce<");
     expect(html).toContain(">Settings<");
     expect(html).toContain(">Profile<");
     expect(html).toContain(">Sign out<");
