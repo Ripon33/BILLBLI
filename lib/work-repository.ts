@@ -65,6 +65,8 @@ export function createWorkRepository(
   };
 
   return {
+    getAuthenticatedUserId: getUserId,
+
     async createWork(work: BillbliWork): Promise<BillbliWork> {
       const supabase = await getSupabase();
       const userId = await getUserId();

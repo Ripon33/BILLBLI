@@ -78,6 +78,17 @@ function createFakeSupabase() {
 }
 
 describe("Work Engine repository", () => {
+  it("exposes the authenticated user id through the repository", async () => {
+    const repository = createWorkRepository({
+      supabase: createFakeSupabase(),
+      getAuthenticatedUserId: async () => "authenticated-user-789",
+    });
+
+    await expect(repository.getAuthenticatedUserId()).resolves.toBe(
+      "authenticated-user-789",
+    );
+  });
+
   it("creates a Work without accepting a client user_id", async () => {
     const work = createWork({
       title: "Research competitors",
