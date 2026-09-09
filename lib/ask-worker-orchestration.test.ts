@@ -85,6 +85,41 @@ describe("governed Ask Worker orchestration", () => {
     });
   });
 
+  it("proposes editable Work without creating it", () => {
+    const result = orchestrateAskWorker({
+      workerId: "worker-1",
+      workerName: "Maya",
+      workerType: "digital_marketer",
+      workerGoal: "Grow qualified leads",
+      message: "Review our advertising performance every week",
+      workProposal: {
+        type: "work_proposal",
+        title: "Review advertising performance",
+        goal: "Review our advertising performance every week",
+        autonomy: "review",
+      },
+    });
+
+    expect(result.workProposal).toEqual({
+      type: "work_proposal",
+      title: "Review advertising performance",
+      goal: "Review our advertising performance every week",
+      autonomy: "review",
+    });
+  });
+
+  it("does not invent a Work proposal when none is supplied", () => {
+    const result = orchestrateAskWorker({
+      workerId: "worker-1",
+      workerName: "Maya",
+      workerType: "digital_marketer",
+      workerGoal: "Grow qualified leads",
+      message: "How should we improve our campaign?",
+    });
+
+    expect(result.workProposal).toBeUndefined();
+  });
+
   it("rejects an empty message", () => {
     expect(() =>
       orchestrateAskWorker({

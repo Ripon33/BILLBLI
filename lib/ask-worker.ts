@@ -10,6 +10,7 @@ export type AskWorkerRequest = {
   workerType?: WorkerType;
   workerGoal: string;
   message: string;
+  workProposal?: AskWorkerWorkProposal;
 };
 
 export type AskWorkerWorkProposal = {
@@ -25,6 +26,7 @@ export function buildAskWorkerRequest(input: {
   workerType?: WorkerType;
   workerGoal: string;
   message: string;
+  workProposal?: AskWorkerWorkProposal;
 }): AskWorkerRequest {
   const message = input.message.trim();
 
@@ -38,6 +40,9 @@ export function buildAskWorkerRequest(input: {
     workerType: input.workerType,
     workerGoal: input.workerGoal,
     message,
+    ...(input.workProposal !== undefined
+      ? { workProposal: input.workProposal }
+      : {}),
   };
 }
 

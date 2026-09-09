@@ -22,7 +22,7 @@ export type AskWorkerOrchestrationResult = {
   stages: string[];
   context: AskWorkerOrchestrationContext;
   governance: AskWorkerGovernance;
-  workProposal?: never;
+  workProposal?: AskWorkerRequest["workProposal"];
 };
 
 function stagesForRoute(route: AskWorkerRoute): string[] {
@@ -64,5 +64,8 @@ export function orchestrateAskWorker(
       requiresHumanAuthorization: humanDecisionRequired,
       externalExecutionAllowed: false,
     },
+    ...(request.workProposal !== undefined
+      ? { workProposal: request.workProposal }
+      : {}),
   };
 }
