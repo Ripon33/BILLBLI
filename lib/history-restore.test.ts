@@ -102,3 +102,112 @@ describe("history restore", () => {
     });
   });
 });
+
+describe("workspace history restore lookup", () => {
+  it("resolves a research history item by id", async () => {
+    const { findHistoryRestoreItem } = await import("./history-restore");
+
+    const item = {
+      id: "research-123",
+      question: "Should we expand?",
+      createdAt: new Date().toISOString(),
+      result: { analysis: { decision: "Expand" } },
+    };
+
+    expect(
+      findHistoryRestoreItem([item], "research-123"),
+    ).toEqual(item);
+  });
+});
+
+describe("workspace history route restore", () => {
+  it("resolves the requested research or study item by route and id", async () => {
+    const {
+      findHistoryRestoreItemByRoute,
+    } = await import("./history-restore");
+
+    const research = {
+      id: "research-123",
+      question: "Research question",
+      createdAt: new Date().toISOString(),
+      result: { kind: "research" },
+    };
+
+    const study = {
+      id: "study-456",
+      question: "Study question",
+      createdAt: new Date().toISOString(),
+      result: { kind: "study" },
+    };
+
+    expect(
+      findHistoryRestoreItemByRoute(
+        "research",
+        "research-123",
+        [research],
+        [study],
+      ),
+    ).toEqual({
+      question: research.question,
+      result: research.result,
+      route: "research",
+    });
+
+    expect(
+      findHistoryRestoreItemByRoute(
+        "study",
+        "study-456",
+        [research],
+        [study],
+      ),
+    ).toEqual({
+      question: study.question,
+      result: study.result,
+      route: "study",
+    });
+  });
+});
+
+describe("workspace history restore request", () => {
+  it("resolves a valid workspace restore request", async () => {
+    const {
+      resolveWorkspaceHistoryRestore,
+    } = await import("./history-restore");
+
+    const research = {
+      id: "research-123",
+      question: "Research question",
+      createdAt: new Date().toISOString(),
+      result: { kind: "research" },
+    };
+
+    const study = {
+      id: "study-456",
+      question: "Study question",
+      createdAt: new Date().toISOString(),
+      result: { kind: "study" },
+    };
+
+    expect(
+      resolveWorkspaceHistoryRestore(
+        "research",
+        "research-123",
+        [research],
+        [study],
+      ),
+    ).toEqual({
+      question: research.question,
+      result: research.result,
+      route: "research",
+    });
+
+    expect(
+      resolveWorkspaceHistoryRestore(
+        "invalid",
+        "research-123",
+        [research],
+        [study],
+      ),
+    ).toBeUndefined();
+  });
+});
