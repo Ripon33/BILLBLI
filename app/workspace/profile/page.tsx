@@ -1,20 +1,22 @@
+import ProfileWorkspace from "@/components/ProfileWorkspace";
 import { WorkspaceDestination } from "@/components/WorkspaceDestination";
+import { requireUser } from "@/lib/supabase/auth";
 
-export default function ProfilePage() {
+export default async function ProfilePage() {
+  const user = await requireUser();
+
   return (
     <WorkspaceDestination
       title="Profile"
       description="View your authenticated BILLBLI account profile."
     >
-      <section className="rounded-2xl border border-zinc-200 bg-white p-6">
-        <h2 className="text-lg font-semibold text-zinc-900">
-          Profile
-        </h2>
-        <p className="mt-2 text-sm leading-6 text-zinc-500">
-          Your authenticated profile information belongs to your BILLBLI
-          account.
-        </p>
-      </section>
+      <ProfileWorkspace
+        user={{
+          id: user.id,
+          email: user.email,
+          user_metadata: user.user_metadata,
+        }}
+      />
     </WorkspaceDestination>
   );
 }

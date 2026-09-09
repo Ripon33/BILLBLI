@@ -1,4 +1,12 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+
+vi.mock("@/lib/supabase/auth", () => ({
+  requireUser: vi.fn().mockResolvedValue({
+    id: "user-1",
+    email: "user@example.com",
+    user_metadata: { full_name: "Test User" },
+  }),
+}));
 import { renderToStaticMarkup } from "react-dom/server";
 
 import ResearchPage from "./workspace/research/page";
