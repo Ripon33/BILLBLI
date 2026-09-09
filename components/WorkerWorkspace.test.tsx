@@ -3,8 +3,12 @@ import { renderToStaticMarkup } from "react-dom/server";
 import WorkerWorkspace, {
   createAskWorkerSubmission,
   submitAskWorker,
+  submitWorkProposal,
   createAskWorkerState,
+  createWorkProposalSubmission,
+  createReviewedWorkInput,
   AskWorkerResearchResult,
+  AskWorkerWorkProposalReview,
   type AskWorkerSubmissionResult,
 } from "./WorkerWorkspace";
 
@@ -160,6 +164,37 @@ describe("WorkerWorkspace Ask Worker interaction", () => {
     expect(result.result?.research?.sources).toHaveLength(1);
   });
 
+  it("preserves an explicit Work proposal from the governed API response", () => {
+    const result: AskWorkerSubmissionResult = {
+      route: "research",
+      stages: ["research", "synthesis"],
+      context: {
+        workerId: "worker-1",
+        workerName: "Maya",
+        workerType: "digital_marketer",
+        workerGoal: "Build and manage our digital marketing pipeline.",
+      },
+      governance: {
+        recommendationIsAuthorization: false,
+        requiresHumanAuthorization: false,
+        externalExecutionAllowed: false,
+      },
+      workProposal: {
+        type: "work_proposal",
+        title: "Launch campaign review",
+        goal: "Review campaign performance and prepare the next campaign plan.",
+        autonomy: "review",
+      },
+    };
+
+    expect(result.workProposal).toEqual({
+      type: "work_proposal",
+      title: "Launch campaign review",
+      goal: "Review campaign performance and prepare the next campaign plan.",
+      autonomy: "review",
+    });
+  });
+
   it("presents the actual governed research result", () => {
     const result = createAskWorkerState({
       route: "research",
@@ -216,6 +251,153 @@ describe("WorkerWorkspace Ask Worker interaction", () => {
     );
     expect(result.result?.research?.recommendation).toBeDefined();
     expect(result.result?.research?.sources).toHaveLength(1);
+  });
+
+  it("renders a proposed Work for human review with editable fields", () => {
+    const html = renderToStaticMarkup(
+      <AskWorkerWorkProposalReview
+        proposal={{
+          type: "work_proposal",
+          title: "Launch campaign review",
+          goal: "Review campaign performance and prepare the next campaign plan.",
+          autonomy: "review",
+        }}
+      />,
+    );
+
+    expect(html).toContain("Review before creating Work");
+    expect(html).toContain("Work title");
+    expect(html).toContain("Work goal");
+    expect(html).toContain("Launch campaign review");
+    expect(html).toContain(
+      "Review campaign performance and prepare the next campaign plan.",
+    );
+    expect(html).toContain("Create Work");
+  });
+
+  it("creates an explicit Work submission from the reviewed proposal", () => {
+    const result = createWorkProposalSubmission({
+      title: "Launch campaign review",
+      goal: "Review campaign performance and prepare the next campaign plan.",
+    });
+
+    expect(result).toEqual({
+      url: "/api/work",
+      init: {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          title: "Launch campaign review",
+          goal: "Review campaign performance and prepare the next campaign plan.",
+        }),
+      },
+    });
+  });
+
+  it("submits the reviewed Work proposal only through the existing Work API", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        work: {
+          id: "work-1",
+          title: "Launch campaign review",
+        },
+      }),
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await submitWorkProposal({
+      title: "Launch campaign review",
+      goal: "Review campaign performance and prepare the next campaign plan.",
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/work",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          title: "Launch campaign review",
+          goal: "Review campaign performance and prepare the next campaign plan.",
+        }),
+      }),
+    );
+    expect(result.work.id).toBe("work-1");
+
+    vi.unstubAllGlobals();
+  });
+
+  it("wires the reviewed proposal to an explicit create callback", () => {
+    const calls: Array<{ title: string; goal: string }> = [];
+
+    const html = renderToStaticMarkup(
+      <AskWorkerWorkProposalReview
+        proposal={{
+          type: "work_proposal",
+          title: "Launch campaign review",
+          goal: "Review campaign performance and prepare the next campaign plan.",
+          autonomy: "review",
+        }}
+        onCreateWork={(input) => {
+          calls.push(input);
+        }}
+      />,
+    );
+
+    expect(html).toContain("Create Work");
+    expect(calls).toEqual([]);
+  });
+
+  it("uses reviewed proposal values when creating Work", () => {
+    const calls: Array<{ title: string; goal: string }> = [];
+
+    const result = createReviewedWorkInput({
+      title: "  Updated campaign review  ",
+      goal: "  Prepare the revised campaign plan.  ",
+    });
+
+    calls.push(result);
+
+    expect(calls).toEqual([
+      {
+        title: "Updated campaign review",
+        goal: "Prepare the revised campaign plan.",
+      },
+    ]);
+  });
+
+  it("returns the created Work from an explicit proposal submission", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        work: {
+          id: "work-1",
+          title: "Launch campaign review",
+          goal: "Review campaign performance and prepare the next campaign plan.",
+        },
+      }),
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const result = await submitWorkProposal({
+      title: "Launch campaign review",
+      goal: "Review campaign performance and prepare the next campaign plan.",
+    });
+
+    expect(result).toEqual({
+      work: {
+        id: "work-1",
+        title: "Launch campaign review",
+        goal: "Review campaign performance and prepare the next campaign plan.",
+      },
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    vi.unstubAllGlobals();
   });
 
   it("can consume the governed API response without granting authorization", async () => {

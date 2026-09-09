@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { BillbliWork } from "@/lib/work-engine";
 import type { ResearchRunnerResult } from "@/lib/research-runner";
+import type { AskWorkerWorkProposal } from "@/lib/ask-worker";
 import { WORKER_PROFILES } from "@/lib/worker-domain";
 
 type WorkerWorkspaceProps = {
@@ -35,6 +36,7 @@ export type AskWorkerSubmissionResult = {
     externalExecutionAllowed: false;
   };
   research?: ResearchRunnerResult;
+  workProposal?: AskWorkerWorkProposal;
 };
 
 export function createAskWorkerSubmission(input: {
@@ -59,11 +61,74 @@ export function createAskWorkerSubmission(input: {
   };
 }
 
+export function createReviewedWorkInput(input: {
+  title: string;
+  goal: string;
+}) {
+  const title = input.title.trim();
+  const goal = input.goal.trim();
+
+  if (!title || !goal) {
+    throw new Error("Work title and goal are required.");
+  }
+
+  return {
+    title,
+    goal,
+  };
+}
+
+export function createWorkProposalSubmission(input: {
+  title: string;
+  goal: string;
+}) {
+  const title = input.title.trim();
+  const goal = input.goal.trim();
+
+  if (!title || !goal) {
+    throw new Error("Work title and goal are required.");
+  }
+
+  return {
+    url: "/api/work",
+    init: {
+      method: "POST" as const,
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        title,
+        goal,
+      }),
+    },
+  };
+}
+
 function formatLabel(value: string) {
   return value
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+}
+
+export async function submitWorkProposal(input: {
+  title: string;
+  goal: string;
+}) {
+  const { url, init } = createWorkProposalSubmission(input);
+  const response = await fetch(url, init);
+
+  const body = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      typeof body?.error === "string"
+        ? body.error
+        : "Failed to create Work.",
+    );
+  }
+
+  return body;
 }
 
 export function AskWorkerResearchResult({
@@ -138,6 +203,80 @@ export function AskWorkerResearchResult({
           </ul>
         </div>
       )}
+    </div>
+  );
+}
+
+export function AskWorkerWorkProposalReview({
+  proposal,
+  onCreateWork,
+}: {
+  proposal: AskWorkerWorkProposal;
+  onCreateWork?: (input: { title: string; goal: string }) => void;
+}) {
+  const [title, setTitle] = useState(proposal.title);
+  const [goal, setGoal] = useState(proposal.goal);
+
+  function handleCreateWork() {
+    const reviewed = createReviewedWorkInput({ title, goal });
+    onCreateWork?.(reviewed);
+  }
+
+  return (
+    <div className="mt-5 rounded-xl border border-zinc-200 bg-white p-5">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-emerald-600">
+          Work Proposal
+        </p>
+        <h3 className="mt-1 text-base font-semibold text-zinc-900">
+          Review before creating Work
+        </h3>
+        <p className="mt-1 text-sm leading-6 text-zinc-500">
+          Review and edit the proposed Work before explicitly creating it.
+        </p>
+      </div>
+
+      <div className="mt-4 space-y-4">
+        <div>
+          <label
+            htmlFor="work-proposal-title"
+            className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400"
+          >
+            Work title
+          </label>
+          <input
+            id="work-proposal-title"
+            type="text"
+            value={title}
+            onChange={(event) => setTitle(event.target.value)}
+            className="mt-2 w-full rounded-xl border border-zinc-200 px-4 py-3 text-sm text-zinc-900 outline-none focus:border-emerald-500"
+          />
+        </div>
+
+        <div>
+          <label
+            htmlFor="work-proposal-goal"
+            className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400"
+          >
+            Work goal
+          </label>
+          <textarea
+            id="work-proposal-goal"
+            value={goal}
+            onChange={(event) => setGoal(event.target.value)}
+            rows={4}
+            className="mt-2 w-full rounded-xl border border-zinc-200 px-4 py-3 text-sm leading-6 text-zinc-900 outline-none focus:border-emerald-500"
+          />
+        </div>
+
+        <button
+          type="button"
+          onClick={handleCreateWork}
+          className="rounded-xl bg-zinc-900 px-5 py-3 text-sm font-semibold text-white"
+        >
+          Create Work
+        </button>
+      </div>
     </div>
   );
 }
