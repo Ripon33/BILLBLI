@@ -423,3 +423,167 @@ describe("ResearchWorkspace Work proposal submission", () => {
     vi.unstubAllGlobals();
   });
 });
+
+describe("ResearchWorkspace Work creation", () => {
+  it("submits reviewed Work values and reports the created Work", async () => {
+    const submitWork = vi.fn(async () => ({
+      work: {
+        id: "work-789",
+        title: "Reviewed opportunity",
+        goal: "Validate the reviewed target market",
+      },
+    }));
+
+    const onCreated = vi.fn();
+
+    const { createResearchWorkCreationHandler } = await import(
+      "./ResearchWorkspace"
+    );
+
+    const handleCreateWork = createResearchWorkCreationHandler(
+      submitWork,
+      onCreated,
+    );
+
+    await handleCreateWork({
+      title: "Reviewed opportunity",
+      goal: "Validate the reviewed target market",
+    });
+
+    expect(submitWork).toHaveBeenCalledTimes(1);
+    expect(submitWork).toHaveBeenCalledWith({
+      title: "Reviewed opportunity",
+      goal: "Validate the reviewed target market",
+    });
+    expect(onCreated).toHaveBeenCalledTimes(1);
+    expect(onCreated).toHaveBeenCalledWith({
+      id: "work-789",
+      title: "Reviewed opportunity",
+      goal: "Validate the reviewed target market",
+    });
+  });
+});
+
+describe("ResearchWorkspace Work creation UI wiring", () => {
+  it("wires Create Work through the Work creation handler", async () => {
+    const submitWork = vi.fn(async () => ({
+      work: {
+        id: "work-ui-123",
+        title: "UI reviewed work",
+        goal: "Execute the reviewed goal",
+      },
+    }));
+
+    const onCreated = vi.fn();
+
+    const { createResearchWorkCreationHandler } = await import(
+      "./ResearchWorkspace"
+    );
+
+    const handleCreateWork = createResearchWorkCreationHandler(
+      submitWork,
+      onCreated,
+    );
+
+    await handleCreateWork({
+      title: "UI reviewed work",
+      goal: "Execute the reviewed goal",
+    });
+
+    expect(submitWork).toHaveBeenCalledWith({
+      title: "UI reviewed work",
+      goal: "Execute the reviewed goal",
+    });
+
+    expect(onCreated).toHaveBeenCalledWith({
+      id: "work-ui-123",
+      title: "UI reviewed work",
+      goal: "Execute the reviewed goal",
+    });
+  });
+});
+
+describe("ResearchWorkspace Work creation state", () => {
+  it("creates Work through the existing Work API and returns the created Work", async () => {
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          work: {
+            id: "work-api-456",
+            title: "Approved research follow-up",
+            goal: "Validate the market opportunity",
+          },
+        }),
+        {
+          status: 201,
+          headers: {
+            "Content-Type": "application/json",
+          },
+        },
+      ),
+    );
+
+    const { submitResearchWorkProposal } = await import(
+      "./ResearchWorkspace"
+    );
+
+    const work = await submitResearchWorkProposal({
+      title: " Approved research follow-up ",
+      goal: " Validate the market opportunity ",
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/work",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          title: "Approved research follow-up",
+          goal: "Validate the market opportunity",
+        }),
+      }),
+    );
+
+    expect(work).toEqual({
+      work: {
+        id: "work-api-456",
+        title: "Approved research follow-up",
+        goal: "Validate the market opportunity",
+      },
+    });
+
+    fetchMock.mockRestore();
+  });
+});
+
+describe("ResearchWorkspace Work creation failure", () => {
+  it("propagates Work creation errors without reporting a created Work", async () => {
+    const submitWork = vi.fn(async () => {
+      throw new Error("Failed to create Work.");
+    });
+
+    const onCreated = vi.fn();
+
+    const { createResearchWorkCreationHandler } = await import(
+      "./ResearchWorkspace"
+    );
+
+    const handleCreateWork = createResearchWorkCreationHandler(
+      submitWork,
+      onCreated,
+    );
+
+    await expect(
+      handleCreateWork({
+        title: "Failed Work",
+        goal: "This should not be created",
+      }),
+    ).rejects.toThrow("Failed to create Work.");
+
+    expect(submitWork).toHaveBeenCalledWith({
+      title: "Failed Work",
+      goal: "This should not be created",
+    });
+
+    expect(onCreated).not.toHaveBeenCalled();
+  });
+});

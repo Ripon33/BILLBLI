@@ -118,6 +118,22 @@ export async function submitResearchWorkProposal(input: {
   return response.json();
 }
 
+export function createResearchWorkCreationHandler(
+  submitWork: typeof submitResearchWorkProposal,
+  onCreated: (work: { id: string; title: string; goal: string }) => void,
+) {
+  return async (input: { title: string; goal: string }) => {
+    const response = await submitWork({
+      title: input.title.trim(),
+      goal: input.goal.trim(),
+    });
+
+    onCreated(response.work);
+
+    return response.work;
+  };
+}
+
 export function ResearchWorkProposal({
   result,
   onCreateWork,
@@ -228,6 +244,13 @@ export function ResearchWorkspace({
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [workCreating, setWorkCreating] = useState(false);
+  const [createdWork, setCreatedWork] = useState<{
+    id: string;
+    title: string;
+    goal: string;
+  } | null>(null);
+  const [workError, setWorkError] = useState("");
   const [speakingState, setSpeakingState] =
     useState<ResearchWorkspaceSpeechState>("idle");
   const speechCommandRef = useRef<ReturnType<
@@ -300,6 +323,37 @@ export function ResearchWorkspace({
     speechCommandRef.current.stop();
   }
 
+  async function handleCreateWork(input: {
+    title: string;
+    goal: string;
+  }) {
+    setWorkCreating(true);
+    setWorkError("");
+    setCreatedWork(null);
+
+    try {
+      return await createResearchWorkCreationHandler(
+        submitResearchWorkProposal,
+        (created) => {
+          setCreatedWork(created);
+          onCreateWork?.({
+            title: created.title,
+            goal: created.goal,
+          });
+        },
+      )(input);
+    } catch (err) {
+      setWorkError(
+        err instanceof Error
+          ? err.message
+          : "Something went wrong while creating Work.",
+      );
+      return null;
+    } finally {
+      setWorkCreating(false);
+    }
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
@@ -355,8 +409,36 @@ export function ResearchWorkspace({
           <DecisionBox result={result} />
           <ResearchWorkProposal
             result={result}
-            onCreateWork={onCreateWork}
+            onCreateWork={handleCreateWork}
           />
+
+            {workCreating ? (
+              <div
+                role="status"
+                className="mt-3 rounded-xl border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-600"
+              >
+                Creating Work…
+              </div>
+            ) : null}
+
+            {workError ? (
+              <div
+                role="alert"
+                className="mt-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+              >
+                {workError}
+              </div>
+            ) : null}
+
+            {createdWork ? (
+              <div
+                role="status"
+                className="mt-3 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+              >
+                Work created: {" "}
+                <span className="font-semibold">{createdWork.title}</span>
+              </div>
+            ) : null}
         </div>
       ) : null}
 
