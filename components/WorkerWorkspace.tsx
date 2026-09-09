@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import type { BillbliWork } from "@/lib/work-engine";
 import { WORKER_PROFILES } from "@/lib/worker-domain";
 
@@ -5,11 +8,126 @@ type WorkerWorkspaceProps = {
   worker: BillbliWork;
 };
 
+export type AskWorkerSubmission = {
+  url: string;
+  init: {
+    method: "POST";
+    headers: {
+      "content-type": string;
+    };
+    body: string;
+  };
+};
+
+export type AskWorkerSubmissionResult = {
+  route: "study" | "research" | "task";
+  stages: string[];
+  context: {
+    workerId: string;
+    workerName: string;
+    workerType?: BillbliWork["workerType"];
+    workerGoal: string;
+  };
+  governance: {
+    recommendationIsAuthorization: false;
+    requiresHumanAuthorization: boolean;
+    externalExecutionAllowed: false;
+  };
+};
+
+export function createAskWorkerSubmission(input: {
+  workerId: string;
+  message: string;
+}): AskWorkerSubmission {
+  const message = input.message.trim();
+
+  if (!message) {
+    throw new Error("Ask Worker message is required.");
+  }
+
+  return {
+    url: `/api/work/${input.workerId}/ask`,
+    init: {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({ message }),
+    },
+  };
+}
+
 function formatLabel(value: string) {
   return value
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+}
+
+export type AskWorkerState = {
+  status: "idle" | "loading" | "success" | "error";
+  result: AskWorkerSubmissionResult | null;
+  error: string | null;
+};
+
+export function createAskWorkerState(): AskWorkerState;
+export function createAskWorkerState(
+  result: AskWorkerSubmissionResult,
+): AskWorkerState;
+export function createAskWorkerState(
+  status: "loading",
+): AskWorkerState;
+export function createAskWorkerState(
+  status: "error",
+  error: string,
+): AskWorkerState;
+export function createAskWorkerState(
+  input?: AskWorkerSubmissionResult | "loading" | "error",
+  error?: string,
+): AskWorkerState {
+  if (input === "loading") {
+    return {
+      status: "loading",
+      result: null,
+      error: null,
+    };
+  }
+
+  if (input === "error") {
+    return {
+      status: "error",
+      result: null,
+      error: error ?? "Unable to process Ask Worker request.",
+    };
+  }
+
+  if (input) {
+    return {
+      status: "success",
+      result: input,
+      error: null,
+    };
+  }
+
+  return {
+    status: "idle",
+    result: null,
+    error: null,
+  };
+}
+
+export async function submitAskWorker(input: {
+  workerId: string;
+  message: string;
+}): Promise<AskWorkerSubmissionResult> {
+  const submission = createAskWorkerSubmission(input);
+  const response = await fetch(submission.url, submission.init);
+
+  if (!response.ok) {
+    throw new Error("Unable to process Ask Worker request.");
+  }
+
+  return (await response.json()) as AskWorkerSubmissionResult;
 }
 
 export default function WorkerWorkspace({
@@ -19,6 +137,57 @@ export default function WorkerWorkspace({
   const profile = workerType ? WORKER_PROFILES[workerType] : undefined;
   const specialization = profile?.displayName ?? "Custom Worker";
   const workerName = worker.workerName ?? worker.title;
+
+  const [message, setMessage] = useState("");
+  const [state, setState] = useState<AskWorkerState>(
+    createAskWorkerState(),
+  );
+
+  async function handleSubmit() {
+    if (state.status === "loading") {
+      return;
+    }
+
+    const trimmedMessage = message.trim();
+
+    if (!trimmedMessage) {
+      setState(
+        createAskWorkerState(
+          "error",
+          "Ask Worker message is required.",
+        ),
+      );
+      return;
+    }
+
+    setState(createAskWorkerState("loading"));
+
+    try {
+      const result = await submitAskWorker({
+        workerId: worker.id,
+        message: trimmedMessage,
+      });
+
+      setState(createAskWorkerState(result));
+      setMessage("");
+    } catch (error) {
+      setState(
+        createAskWorkerState(
+          "error",
+          error instanceof Error
+            ? error.message
+            : "Unable to process Ask Worker request.",
+        ),
+      );
+    }
+  }
+
+  function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      void handleSubmit();
+    }
+  }
 
   return (
     <section className="space-y-6">
@@ -76,15 +245,87 @@ export default function WorkerWorkspace({
             type="text"
             aria-label={`Ask ${workerName}`}
             placeholder={`Ask ${workerName}...`}
-            className="min-w-0 flex-1 rounded-xl border border-zinc-200 px-4 py-3 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 focus:border-emerald-500"
+            value={message}
+            onChange={(event) => setMessage(event.target.value)}
+            onKeyDown={handleKeyDown}
+            disabled={state.status === "loading"}
+            className="min-w-0 flex-1 rounded-xl border border-zinc-200 px-4 py-3 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 focus:border-emerald-500 disabled:bg-zinc-50 disabled:text-zinc-400"
           />
           <button
             type="button"
-            className="rounded-xl bg-zinc-900 px-5 py-3 text-sm font-semibold text-white"
+            onClick={() => void handleSubmit()}
+            disabled={state.status === "loading"}
+            className="rounded-xl bg-zinc-900 px-5 py-3 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
           >
-            Ask Worker
+            {state.status === "loading" ? "Working..." : "Ask Worker"}
           </button>
         </div>
+
+        {state.status === "error" && (
+          <p
+            role="alert"
+            className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          >
+            {state.error}
+          </p>
+        )}
+
+        {state.status === "loading" && (
+          <div
+            aria-live="polite"
+            className="mt-5 rounded-xl border border-zinc-200 bg-zinc-50 p-4"
+          >
+            <p className="text-sm font-medium text-zinc-800">
+              {workerName} is working through your request…
+            </p>
+            <p className="mt-1 text-xs text-zinc-500">
+              BILLBLI is routing the request through the governed workflow.
+            </p>
+          </div>
+        )}
+
+        {state.status === "success" && state.result && (
+          <div
+            aria-live="polite"
+            className="mt-5 rounded-xl border border-zinc-200 bg-zinc-50 p-5"
+          >
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-emerald-600">
+                  Worker Response
+                </p>
+                <p className="mt-1 text-sm font-semibold text-zinc-900">
+                  Route: {formatLabel(state.result.route)}
+                </p>
+              </div>
+
+              <span className="w-fit rounded-full bg-white px-3 py-1 text-xs font-medium text-zinc-600">
+                Governed
+              </span>
+            </div>
+
+            <div className="mt-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">
+                Progress
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {state.result.stages.map((stage) => (
+                  <span
+                    key={stage}
+                    className="rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-medium text-zinc-600"
+                  >
+                    {formatLabel(stage)}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            <p className="mt-4 text-xs leading-5 text-zinc-500">
+              AI recommendations are not authorization. Any human decision,
+              approval, or execution remains subject to BILLBLI governance.
+            </p>
+          </div>
+        )}
       </section>
     </section>
   );
