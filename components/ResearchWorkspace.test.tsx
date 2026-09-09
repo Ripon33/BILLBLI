@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
-import { ResearchWorkspace, createResearchWorkspaceTranscriptHandler, createResearchWorkspaceSpeechCommand, createResearchWorkspaceSpeechController, createResearchWorkspaceSpeechCallbacks } from "./ResearchWorkspace";
+import { ResearchWorkspace, createResearchWorkspaceTranscriptHandler, createResearchWorkspaceSpeechCommand, createResearchWorkspaceSpeechController, createResearchWorkspaceSpeechCallbacks, createResearchWorkProposalHandler } from "./ResearchWorkspace";
 
 describe("ResearchWorkspace speaking command", () => {
   it("applies a completed speaking transcript to the research question", () => {
@@ -254,5 +254,150 @@ describe("ResearchWorkspace speech wiring", () => {
     callbacks.onEnd();
 
     expect(setState).toHaveBeenLastCalledWith("idle");
+  });
+});
+
+describe("ResearchWorkspace Work proposal", () => {
+  it("renders an explicit Suggested Work proposal from a research result", () => {
+    const result = {
+      status: "researched" as const,
+      answer: "The market is growing.",
+      analysis: {
+        summary: "Demand is increasing.",
+        decision: "Proceed with further validation.",
+        risks: [],
+        what_would_change_the_decision: [],
+      },
+      sources: [],
+      decision: {} as never,
+      tradeoffs: {
+        benefits: [],
+        risks: [],
+        tradeoffs: [],
+        decisionFactors: [],
+      },
+      recommendation: {
+        recommendation: "Validate the opportunity.",
+        confidence: 80,
+          why: [],
+        next_steps: [],
+      },
+    };
+
+    const html = renderToStaticMarkup(
+      <ResearchWorkspace result={result} />,
+    );
+
+    expect(html).toContain("Suggested Work");
+    expect(html).toContain("Create Work");
+  });
+});
+
+
+describe("ResearchWorkspace Work proposal editing", () => {
+  it("renders editable title and goal fields with an explicit create callback", () => {
+    const result = {
+      status: "researched" as const,
+      answer: "The market is growing.",
+      analysis: {
+        summary: "Demand is increasing.",
+        decision: "Proceed with further validation.",
+        risks: [],
+        what_would_change_the_decision: [],
+      },
+      sources: [],
+      decision: {} as never,
+      tradeoffs: {
+        benefits: [],
+        risks: [],
+        tradeoffs: [],
+        decisionFactors: [],
+      },
+      recommendation: {
+        recommendation: "Validate the opportunity.",
+        confidence: 80,
+        next_steps: ["Validate the target market."],
+        why: [],
+      },
+    };
+
+    const onCreateWork = vi.fn();
+
+    const html = renderToStaticMarkup(
+      <ResearchWorkspace
+        result={result}
+        onCreateWork={onCreateWork}
+      />,
+    );
+
+    expect(html).toContain('name="work-title"');
+    expect(html).toContain('name="work-goal"');
+    expect(html).toContain("Create Work");
+  });
+});
+
+
+describe("ResearchWorkspace Work proposal creation", () => {
+  it("creates reviewed Work input from the proposal values", () => {
+    const onCreateWork = vi.fn();
+
+    const submit = createResearchWorkProposalHandler(onCreateWork);
+
+    submit({
+      title: "Validate the opportunity.",
+      goal: "Validate the target market.",
+    });
+
+    expect(onCreateWork).toHaveBeenCalledTimes(1);
+    expect(onCreateWork).toHaveBeenCalledWith({
+      title: "Validate the opportunity.",
+      goal: "Validate the target market.",
+    });
+  });
+});
+
+describe("ResearchWorkspace Work proposal submission", () => {
+  it("submits the reviewed Work input to the existing Work API", async () => {
+    const fetchMock = vi.fn(async () => new Response(
+      JSON.stringify({
+        work: {
+          id: "work-123",
+          title: "Validate the opportunity.",
+          goal: "Validate the target market.",
+        },
+      }),
+      {
+        status: 201,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      },
+    ));
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const { submitResearchWorkProposal } = await import("./ResearchWorkspace");
+
+    await submitResearchWorkProposal({
+      title: "Validate the opportunity.",
+      goal: "Validate the target market.",
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/work",
+      expect.objectContaining({
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title: "Validate the opportunity.",
+          goal: "Validate the target market.",
+        }),
+      }),
+    );
+
+    vi.unstubAllGlobals();
   });
 });
