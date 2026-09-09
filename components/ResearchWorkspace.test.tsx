@@ -277,10 +277,21 @@ describe("ResearchWorkspace Work proposal", () => {
         decisionFactors: [],
       },
       recommendation: {
-        recommendation: "Validate the opportunity.",
+        recommendation: "proceed",
         confidence: 80,
-          why: [],
-        next_steps: [],
+        why: [],
+        risks: [],
+        tradeoffs: [],
+      },
+      actionPlan: {
+        actions: [
+          {
+            action: "Validate the target market.",
+            priority: "important",
+            reason: "Validate the opportunity before proceeding.",
+            checkpoint: "Review validation results.",
+          },
+        ],
       },
     };
 
@@ -314,10 +325,21 @@ describe("ResearchWorkspace Work proposal editing", () => {
         decisionFactors: [],
       },
       recommendation: {
-        recommendation: "Validate the opportunity.",
+        recommendation: "proceed",
         confidence: 80,
-        next_steps: ["Validate the target market."],
         why: [],
+        risks: [],
+        tradeoffs: [],
+      },
+      actionPlan: {
+        actions: [
+          {
+            action: "Validate the target market.",
+            priority: "important",
+            reason: "Validate the opportunity before proceeding.",
+            checkpoint: "Review validation results.",
+          },
+        ],
       },
     };
 

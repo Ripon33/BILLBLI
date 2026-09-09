@@ -131,7 +131,7 @@ export function ResearchWorkProposal({
     "Follow up on this decision";
 
   const initialGoal =
-    result.recommendation?.next_steps?.[0]?.trim() ||
+    result.actionPlan?.actions?.[0]?.action?.trim() ||
     result.analysis?.summary?.trim() ||
     "Continue the recommended next step using the current research evidence.";
 
