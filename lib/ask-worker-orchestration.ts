@@ -5,6 +5,11 @@ import {
   type AskWorkerRoute,
 } from "./ask-worker";
 import { classifyHumanDecisionRequirement } from "./work-decision";
+import {
+  runResearch,
+  type ResearchRunnerDependencies,
+  type ResearchRunnerResult,
+} from "./research-runner";
 
 export type AskWorkerOrchestrationContext = Pick<
   AskWorkerRequest,
@@ -22,7 +27,12 @@ export type AskWorkerOrchestrationResult = {
   stages: string[];
   context: AskWorkerOrchestrationContext;
   governance: AskWorkerGovernance;
+  research?: ResearchRunnerResult;
   workProposal?: AskWorkerRequest["workProposal"];
+};
+
+export type AskWorkerOrchestrationDependencies = {
+  research?: ResearchRunnerDependencies;
 };
 
 function stagesForRoute(route: AskWorkerRoute): string[] {
@@ -38,9 +48,10 @@ function stagesForRoute(route: AskWorkerRoute): string[] {
   }
 }
 
-export function orchestrateAskWorker(
+export async function orchestrateAskWorker(
   input: AskWorkerRequest,
-): AskWorkerOrchestrationResult {
+  dependencies: AskWorkerOrchestrationDependencies = {},
+): Promise<AskWorkerOrchestrationResult> {
   const request = buildAskWorkerRequest(input);
   const route = classifyAskWorkerRoute(request.message);
   const humanDecisionRequired = classifyHumanDecisionRequirement(
@@ -48,9 +59,15 @@ export function orchestrateAskWorker(
     `${request.workerGoal} ${request.message}`,
   ).required;
 
+  const research =
+    route === "research"
+      ? await runResearch(request.message, dependencies.research)
+      : undefined;
+
   return {
     route,
     stages: stagesForRoute(route),
+    ...(research !== undefined ? { research } : {}),
     context: {
       workerId: request.workerId,
       workerName: request.workerName,

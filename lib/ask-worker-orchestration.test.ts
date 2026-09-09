@@ -1,18 +1,48 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   orchestrateAskWorker,
   type AskWorkerOrchestrationResult,
 } from "./ask-worker-orchestration";
 
+const researchDependencies = {
+  search: vi.fn().mockResolvedValue([
+    {
+      title: "Market research report",
+      url: "https://example.gov/market-research",
+      content:
+        "Official market research data and statistics describe market demand, customers, growth opportunities, pricing conditions, and competitive market analysis for this product category.",
+      score: 0.9,
+    },
+  ]),
+  generate: vi.fn().mockResolvedValue(
+    JSON.stringify({
+      decision: "Proceed with further validation.",
+      confidence: 70,
+      summary: "The evidence supports further validation.",
+      key_facts: [{ fact: "Example factual finding", sources: [1] }],
+      evidence_for: [{ point: "Supporting evidence", sources: [1] }],
+      evidence_against: [],
+      risks: ["Limited evidence"],
+      assumptions: ["Example assumption"],
+      conflicts: [],
+      what_would_change_the_decision: ["New contradictory evidence"],
+    }),
+  ),
+};
+
 describe("governed Ask Worker orchestration", () => {
-  it("routes a worker request through the existing BILLBLI route", () => {
-    const result = orchestrateAskWorker({
+  it("routes a worker request through the existing BILLBLI route", async () => {
+    const result = await orchestrateAskWorker({
       workerId: "worker-1",
       workerName: "Maya",
       workerType: "digital_marketer",
       workerGoal: "Grow qualified leads",
       message: "Research the market for this product",
-    });
+    },
+    {
+      research: researchDependencies,
+    },
+    );
 
     expect(result.route).toBe("research");
     expect(result.stages).toEqual([
@@ -23,8 +53,8 @@ describe("governed Ask Worker orchestration", () => {
     ]);
   });
 
-  it("preserves the worker identity and goal in orchestration context", () => {
-    const result = orchestrateAskWorker({
+  it("preserves the worker identity and goal in orchestration context", async () => {
+    const result = await orchestrateAskWorker({
       workerId: "worker-1",
       workerName: "Maya",
       workerType: "digital_marketer",
@@ -40,8 +70,8 @@ describe("governed Ask Worker orchestration", () => {
     });
   });
 
-  it("does not create Work during orchestration", () => {
-    const result = orchestrateAskWorker({
+  it("does not create Work during orchestration", async () => {
+    const result = await orchestrateAskWorker({
       workerId: "worker-1",
       workerName: "Maya",
       workerType: "digital_marketer",
@@ -53,14 +83,18 @@ describe("governed Ask Worker orchestration", () => {
     expect("id" in result).toBe(false);
   });
 
-  it("represents a governed response without granting authorization", () => {
-    const result: AskWorkerOrchestrationResult = orchestrateAskWorker({
+  it("represents a governed response without granting authorization", async () => {
+    const result: AskWorkerOrchestrationResult = await orchestrateAskWorker({
       workerId: "worker-1",
       workerName: "Maya",
       workerType: "digital_marketer",
       workerGoal: "Grow qualified leads",
       message: "Should we increase our advertising budget?",
-    });
+    },
+    {
+      research: researchDependencies,
+    },
+    );
 
     expect(result.governance).toEqual({
       recommendationIsAuthorization: false,
@@ -69,8 +103,8 @@ describe("governed Ask Worker orchestration", () => {
     });
   });
 
-  it("requires human authorization for human-decision requests without granting execution", () => {
-    const result = orchestrateAskWorker({
+  it("requires human authorization for human-decision requests without granting execution", async () => {
+    const result = await orchestrateAskWorker({
       workerId: "worker-1",
       workerName: "Maya",
       workerType: "hr_assistant",
@@ -85,8 +119,8 @@ describe("governed Ask Worker orchestration", () => {
     });
   });
 
-  it("proposes editable Work without creating it", () => {
-    const result = orchestrateAskWorker({
+  it("proposes editable Work without creating it", async () => {
+    const result = await orchestrateAskWorker({
       workerId: "worker-1",
       workerName: "Maya",
       workerType: "digital_marketer",
@@ -108,8 +142,8 @@ describe("governed Ask Worker orchestration", () => {
     });
   });
 
-  it("does not invent a Work proposal when none is supplied", () => {
-    const result = orchestrateAskWorker({
+  it("does not invent a Work proposal when none is supplied", async () => {
+    const result = await orchestrateAskWorker({
       workerId: "worker-1",
       workerName: "Maya",
       workerType: "digital_marketer",
@@ -120,8 +154,56 @@ describe("governed Ask Worker orchestration", () => {
     expect(result.workProposal).toBeUndefined();
   });
 
-  it("rejects an empty message", () => {
-    expect(() =>
+  it("includes the real research result when a research route is executed", async () => {
+    const result = await orchestrateAskWorker(
+      {
+        workerId: "worker-1",
+        workerName: "Maya",
+        workerType: "digital_marketer",
+        workerGoal: "Grow qualified leads",
+        message: "Research the market for this product",
+      },
+      {
+        research: {
+          search: vi.fn().mockResolvedValue([
+            {
+              title: "Market research report",
+              url: "https://example.gov/market-research",
+              content:
+                "Official market research data and statistics describe market demand, customers, growth opportunities, pricing conditions, and competitive market analysis for this product category.",
+              score: 0.9,
+            },
+          ]),
+          generate: vi.fn().mockResolvedValue(
+            JSON.stringify({
+              decision: "Proceed with further validation.",
+              confidence: 70,
+              summary: "The evidence supports further validation.",
+              key_facts: [{ fact: "Example factual finding", sources: [1] }],
+              evidence_for: [{ point: "Supporting evidence", sources: [1] }],
+              evidence_against: [],
+              risks: ["Limited evidence"],
+              assumptions: ["Example assumption"],
+              conflicts: [],
+              what_would_change_the_decision: ["New contradictory evidence"],
+            }),
+          ),
+        },
+      },
+    );
+
+    expect(result.route).toBe("research");
+    expect(result.research).toBeDefined();
+    expect(result.research?.status).toBe("researched");
+    expect(result.research?.analysis).toBeDefined();
+    expect(result.research?.decision).toBeDefined();
+    expect(result.research?.recommendation).toBeDefined();
+    expect(result.research?.provenance).toBeDefined();
+    expect(result.research?.sources).toBeDefined();
+  });
+
+  it("rejects an empty message", async () => {
+    await expect(
       orchestrateAskWorker({
         workerId: "worker-1",
         workerName: "Maya",
@@ -129,6 +211,6 @@ describe("governed Ask Worker orchestration", () => {
         workerGoal: "Grow qualified leads",
         message: "   ",
       }),
-    ).toThrow("Ask Worker message is required.");
+    ).rejects.toThrow("Ask Worker message is required.");
   });
 });

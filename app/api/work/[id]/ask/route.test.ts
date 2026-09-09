@@ -1,6 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { POST } from "./route";
 
+const { runResearch } = vi.hoisted(() => ({
+  runResearch: vi.fn(),
+}));
+
+vi.mock("@/lib/research-runner", () => ({
+  runResearch,
+}));
+
+
 const getAuthenticatedUserId = vi.fn();
 const getWork = vi.fn();
 
@@ -14,6 +23,21 @@ vi.mock("@/lib/work-repository", () => ({
 describe("POST /api/work/[id]/ask", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+
+    runResearch.mockResolvedValue({
+      status: "researched",
+      question: "Research our market.",
+      plan: {},
+      analysis: {},
+      language: "en",
+      decision: {},
+      tradeoffs: {},
+      recommendation: {},
+      reassessment: {},
+      actionPlan: {},
+      provenance: {},
+      sources: [],
+    });
   });
 
   it("requires authentication", async () => {
@@ -33,6 +57,21 @@ describe("POST /api/work/[id]/ask", () => {
 
   it("loads the worker through the authenticated repository", async () => {
     getAuthenticatedUserId.mockResolvedValue("user-1");
+    runResearch.mockResolvedValue({
+      status: "researched",
+      question: "Research our market.",
+      plan: {},
+      analysis: {},
+      language: "en",
+      decision: {},
+      tradeoffs: {},
+      recommendation: {},
+      reassessment: {},
+      actionPlan: {},
+      provenance: {},
+      sources: [],
+    });
+
     getWork.mockResolvedValue({
       id: "worker-1",
       title: "Maya",

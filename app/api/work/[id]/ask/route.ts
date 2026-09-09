@@ -69,7 +69,7 @@ export async function POST(
       message: body.message,
     });
 
-    const result = orchestrateAskWorker(askRequest);
+    const result = await orchestrateAskWorker(askRequest);
 
     return NextResponse.json(result);
   } catch (error) {

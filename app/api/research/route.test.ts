@@ -1,5 +1,22 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { POST } from "./route";
+vi.mock("@/lib/research-runner", () => ({
+  runResearch: vi.fn().mockResolvedValue({
+    status: "researched",
+    question: "Research the market for this product",
+    plan: {},
+    analysis: {},
+    language: "en",
+    decision: {},
+    tradeoffs: {},
+    recommendation: {},
+    reassessment: {},
+    actionPlan: {},
+    provenance: {},
+    sources: [],
+  }),
+}));
+
 
 describe("POST /api/research security boundary", () => {
   it("rejects a question longer than 4000 characters", async () => {
@@ -116,3 +133,27 @@ describe("POST /api/research security boundary", () => {
   });
 
 });
+
+  it("delegates research requests to the shared research runner", async () => {
+    vi.stubEnv("TAVILY_API_KEY", "test-tavily-key");
+    vi.stubEnv("GEMINI_API_KEY", "test-gemini-key");
+
+
+    const request = new Request("http://localhost/api/research", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-forwarded-for": "198.51.100.40",
+      },
+      body: JSON.stringify({
+        question: "Research the market for this product",
+      }),
+    });
+
+    const response = await POST(request);
+    const data = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(data.status).toBe("researched");
+    expect(data.question).toBe("Research the market for this product");
+  });
