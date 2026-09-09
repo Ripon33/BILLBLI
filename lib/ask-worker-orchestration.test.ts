@@ -69,6 +69,22 @@ describe("governed Ask Worker orchestration", () => {
     });
   });
 
+  it("requires human authorization for human-decision requests without granting execution", () => {
+    const result = orchestrateAskWorker({
+      workerId: "worker-1",
+      workerName: "Maya",
+      workerType: "hr_assistant",
+      workerGoal: "Support responsible people operations",
+      message: "Should we terminate employee?",
+    });
+
+    expect(result.governance).toEqual({
+      recommendationIsAuthorization: false,
+      requiresHumanAuthorization: true,
+      externalExecutionAllowed: false,
+    });
+  });
+
   it("rejects an empty message", () => {
     expect(() =>
       orchestrateAskWorker({

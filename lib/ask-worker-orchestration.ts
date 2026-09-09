@@ -4,6 +4,7 @@ import {
   type AskWorkerRequest,
   type AskWorkerRoute,
 } from "./ask-worker";
+import { classifyHumanDecisionRequirement } from "./work-decision";
 
 export type AskWorkerOrchestrationContext = Pick<
   AskWorkerRequest,
@@ -42,6 +43,10 @@ export function orchestrateAskWorker(
 ): AskWorkerOrchestrationResult {
   const request = buildAskWorkerRequest(input);
   const route = classifyAskWorkerRoute(request.message);
+  const humanDecisionRequired = classifyHumanDecisionRequirement(
+    request.workerName,
+    `${request.workerGoal} ${request.message}`,
+  ).required;
 
   return {
     route,
@@ -56,7 +61,7 @@ export function orchestrateAskWorker(
     },
     governance: {
       recommendationIsAuthorization: false,
-      requiresHumanAuthorization: false,
+      requiresHumanAuthorization: humanDecisionRequired,
       externalExecutionAllowed: false,
     },
   };
