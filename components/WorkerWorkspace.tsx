@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { BillbliWork } from "@/lib/work-engine";
+import type { ResearchRunnerResult } from "@/lib/research-runner";
 import { WORKER_PROFILES } from "@/lib/worker-domain";
 
 type WorkerWorkspaceProps = {
@@ -33,6 +34,7 @@ export type AskWorkerSubmissionResult = {
     requiresHumanAuthorization: boolean;
     externalExecutionAllowed: false;
   };
+  research?: ResearchRunnerResult;
 };
 
 export function createAskWorkerSubmission(input: {
@@ -62,6 +64,82 @@ function formatLabel(value: string) {
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+}
+
+export function AskWorkerResearchResult({
+  research,
+}: {
+  research: ResearchRunnerResult;
+}) {
+  return (
+    <div className="space-y-5">
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">
+          Answer
+        </p>
+        <p className="mt-2 text-sm leading-6 text-zinc-800">
+          {research.analysis.summary}
+        </p>
+      </div>
+
+      <div>
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">
+          Decision
+        </p>
+        <p className="mt-2 text-sm leading-6 text-zinc-800">
+          {research.analysis.decision}
+        </p>
+      </div>
+
+      {research.analysis.risks.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">
+            Risks
+          </p>
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-6 text-zinc-700">
+            {research.analysis.risks.map((risk) => (
+              <li key={risk}>{risk}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {research.analysis.what_would_change_the_decision.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">
+            What would change the decision
+          </p>
+          <ul className="mt-2 list-disc space-y-1 pl-5 text-sm leading-6 text-zinc-700">
+            {research.analysis.what_would_change_the_decision.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {research.sources.length > 0 && (
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">
+            Evidence
+          </p>
+          <ul className="mt-2 space-y-2">
+            {research.sources.map((source) => (
+              <li key={source.id}>
+                <a
+                  href={source.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-sm font-medium text-emerald-700 hover:underline"
+                >
+                  {source.title}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
 }
 
 export type AskWorkerState = {
@@ -303,6 +381,12 @@ export default function WorkerWorkspace({
                 Governed
               </span>
             </div>
+
+            {state.result.research && (
+              <div className="mt-5 border-t border-zinc-200 pt-5">
+                <AskWorkerResearchResult research={state.result.research} />
+              </div>
+            )}
 
             <div className="mt-4">
               <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">

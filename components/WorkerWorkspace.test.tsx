@@ -4,10 +4,58 @@ import WorkerWorkspace, {
   createAskWorkerSubmission,
   submitAskWorker,
   createAskWorkerState,
+  AskWorkerResearchResult,
   type AskWorkerSubmissionResult,
 } from "./WorkerWorkspace";
 
 describe("WorkerWorkspace", () => {
+  it("renders the actual governed research result", () => {
+    const research = {
+      status: "researched" as const,
+      question: "Should we expand our campaign?",
+      plan: {} as never,
+      analysis: {
+        decision: "Expansion is promising.",
+        confidence: 0.82,
+        summary: "The available evidence supports expansion.",
+        key_facts: [],
+        evidence_for: [],
+        evidence_against: [],
+        risks: ["Budget exposure"],
+        assumptions: ["Current demand continues"],
+        conflicts: [],
+        what_would_change_the_decision: ["Demand weakens"],
+      },
+      language: "en" as const,
+      decision: {} as never,
+      tradeoffs: {} as never,
+      recommendation: {} as never,
+      reassessment: {} as never,
+      actionPlan: {} as never,
+      provenance: {} as never,
+      sources: [
+        {
+          id: 1,
+          title: "Market report",
+          url: "https://example.gov/report",
+          score: 0.9,
+          authority: 0.95,
+          authority_type: "government",
+        },
+      ],
+    };
+
+    const html = renderToStaticMarkup(
+      <AskWorkerResearchResult research={research} />,
+    );
+
+    expect(html).toContain("The available evidence supports expansion.");
+    expect(html).toContain("Expansion is promising.");
+    expect(html).toContain("Budget exposure");
+    expect(html).toContain("Demand weakens");
+    expect(html).toContain("Market report");
+  });
+
   it("renders persistent worker identity, specialization, goal, and control state", () => {
     const html = renderToStaticMarkup(
       <WorkerWorkspace
@@ -80,6 +128,94 @@ describe("WorkerWorkspace Ask Worker interaction", () => {
 
     expect("work" in result).toBe(false);
     expect("createWork" in result).toBe(false);
+  });
+
+  it("preserves the research result for Worker Workspace presentation", () => {
+    const result = createAskWorkerState({
+      route: "research",
+      stages: ["understanding", "routing", "research", "synthesis"],
+      context: {
+        workerId: "worker-1",
+        workerName: "Maya",
+        workerType: "digital_marketer",
+        workerGoal: "Grow qualified leads",
+      },
+      governance: {
+        recommendationIsAuthorization: false,
+        requiresHumanAuthorization: false,
+        externalExecutionAllowed: false,
+      },
+      research: {
+        answer: "The market is growing.",
+        sources: [
+          {
+            title: "Market report",
+            url: "https://example.gov/report",
+          },
+        ],
+      },
+    });
+
+    expect(result.result?.research?.answer).toBe("The market is growing.");
+    expect(result.result?.research?.sources).toHaveLength(1);
+  });
+
+  it("presents the actual governed research result", () => {
+    const result = createAskWorkerState({
+      route: "research",
+      stages: ["understanding", "routing", "research", "synthesis"],
+      context: {
+        workerId: "worker-1",
+        workerName: "Maya",
+        workerType: "digital_marketer",
+        workerGoal: "Grow qualified leads",
+      },
+      governance: {
+        recommendationIsAuthorization: false,
+        requiresHumanAuthorization: false,
+        externalExecutionAllowed: false,
+      },
+      research: {
+        status: "researched",
+        question: "Should we expand our campaign?",
+        plan: {} as never,
+        analysis: {
+          decision: "Expansion is promising.",
+          confidence: 0.82,
+          summary: "The available evidence supports expansion.",
+          key_facts: [],
+          evidence_for: [],
+          evidence_against: [],
+          risks: [],
+          assumptions: [],
+          conflicts: [],
+          what_would_change_the_decision: [],
+        },
+        language: "en",
+        decision: {} as never,
+        tradeoffs: {} as never,
+        recommendation: {} as never,
+        reassessment: {} as never,
+        actionPlan: {} as never,
+        provenance: {} as never,
+        sources: [
+          {
+            id: 1,
+            title: "Market report",
+            url: "https://example.gov/report",
+            score: 0.9,
+            authority: 0.95,
+            authority_type: "government",
+          },
+        ],
+      },
+    });
+
+    expect(result.result?.research?.analysis.summary).toBe(
+      "The available evidence supports expansion.",
+    );
+    expect(result.result?.research?.recommendation).toBeDefined();
+    expect(result.result?.research?.sources).toHaveLength(1);
   });
 
   it("can consume the governed API response without granting authorization", async () => {
