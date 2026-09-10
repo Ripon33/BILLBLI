@@ -59,4 +59,28 @@ describe("Work Engine persistence schema", () => {
     expect(source).toContain("add column if not exists worker_name text");
     expect(source).toContain("add column if not exists worker_context jsonb");
   });
+
+  it("defines persistent Work autonomy and authorization fields", () => {
+    const migrationsDir = resolve(process.cwd(), "supabase/migrations");
+
+    const migrationFiles = [
+      "202609100001_work_autonomy_persistence.sql",
+    ];
+
+    const migration = migrationFiles.find((name) =>
+      existsSync(resolve(migrationsDir, name)),
+    );
+
+    expect(migration).toBeDefined();
+
+    const source = readFileSync(
+      resolve(migrationsDir, migration!),
+      "utf8",
+    );
+
+    expect(source).toContain("alter table works");
+    expect(source).toContain("add column if not exists autonomy_level text");
+    expect(source).toContain("add column if not exists authorization text");
+  });
+
 });

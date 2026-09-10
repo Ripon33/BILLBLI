@@ -170,6 +170,57 @@ describe("Work Engine repository", () => {
     });
   });
 
+  it("persists and loads the selected Worker autonomy", async () => {
+    const work = createWork({
+      title: "Review marketing worker",
+      goal: "Support campaign planning with human review",
+      autonomy: "review",
+    });
+
+    const worker = {
+      ...work,
+      workerType: "digital_marketer" as const,
+      workerName: "Review Marketing Assistant",
+    };
+
+    const supabase = createFakeSupabase();
+
+    const repository = createWorkRepository({
+      supabase,
+      getAuthenticatedUserId: async () => "user-123",
+    });
+
+    const created = await repository.createWork(worker);
+    const loaded = await repository.getWork(worker.id);
+
+    expect(created.autonomy).toBe("review");
+    expect(loaded?.autonomy).toBe("review");
+  });
+
+  it("persists and loads required authorization for approval Work", async () => {
+    const work = createWork({
+      title: "Approve marketing worker",
+      goal: "Support campaign planning with explicit approval",
+      autonomy: "approval",
+    });
+
+    const supabase = createFakeSupabase();
+
+    const repository = createWorkRepository({
+      supabase,
+      getAuthenticatedUserId: async () => "user-123",
+    });
+
+    const created = await repository.createWork(work);
+    const loaded = await repository.getWork(work.id);
+
+    expect(created.autonomy).toBe("approval");
+    expect(created.authorization).toBe("required");
+    expect(loaded?.autonomy).toBe("approval");
+    expect(loaded?.authorization).toBe("required");
+  });
+
+
   it("lists only Work records owned by the authenticated user", async () => {
     const firstWork = createWork({
       title: "Owned worker",
