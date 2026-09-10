@@ -80,7 +80,7 @@ describe("Work Engine persistence schema", () => {
 
     expect(source).toContain("alter table works");
     expect(source).toContain("add column if not exists autonomy_level text");
-    expect(source).toContain("add column if not exists authorization text");
+    expect(source).toContain('add column if not exists "authorization" text');
   });
 
 });
