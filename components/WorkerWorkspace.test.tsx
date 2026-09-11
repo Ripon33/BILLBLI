@@ -7,6 +7,7 @@ import WorkerWorkspace, {
   createAskWorkerState,
   createWorkProposalSubmission,
   createReviewedWorkInput,
+  createWorkAutonomyUpdate,
   AskWorkerResearchResult,
   AskWorkerWorkProposalReview,
   type AskWorkerSubmissionResult,
@@ -90,6 +91,54 @@ describe("WorkerWorkspace", () => {
     );
     expect(html).toContain("Review");
     expect(html).toContain("Ask Maya");
+  });
+
+  it("renders an interactive autonomy control with all governed levels", () => {
+    const html = renderToStaticMarkup(
+      <WorkerWorkspace
+        worker={{
+          id: "worker-1",
+          title: "Maya",
+          goal: "Build and manage our digital marketing pipeline.",
+          status: "draft",
+          priority: "normal",
+          autonomy: "review",
+          authorization: "not_required",
+          workerType: "digital_marketer",
+          workerName: "Maya",
+          createdAt: "2026-09-09T00:00:00.000Z",
+          updatedAt: "2026-09-09T00:00:00.000Z",
+        }}
+      />,
+    );
+
+    expect(html).toContain('aria-label="Worker autonomy"');
+    expect(html).toContain("Auto");
+    expect(html).toContain("Review");
+    expect(html).toContain("Approval");
+    expect(html).toContain("Restricted");
+  });
+
+  it("creates a governed autonomy update request", () => {
+    const result = createWorkAutonomyUpdate({
+      workerId: "worker-1",
+      autonomy: "approval",
+    });
+
+    expect(result).toEqual({
+      url: "/api/work/worker-1",
+      init: {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({
+          autonomy: "approval",
+        }),
+      },
+    });
+
+    expect(JSON.stringify(result)).not.toContain("authorization");
   });
 });
 

@@ -112,6 +112,43 @@ function formatLabel(value: string) {
     .join(" ");
 }
 
+export function createWorkAutonomyUpdate(input: {
+  workerId: string;
+  autonomy: BillbliWork["autonomy"];
+}) {
+  return {
+    url: `/api/work/${input.workerId}`,
+    init: {
+      method: "PATCH" as const,
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        autonomy: input.autonomy,
+      }),
+    },
+  };
+}
+
+export async function submitWorkAutonomyUpdate(input: {
+  workerId: string;
+  autonomy: BillbliWork["autonomy"];
+}): Promise<{ work: BillbliWork }> {
+  const { url, init } = createWorkAutonomyUpdate(input);
+  const response = await fetch(url, init);
+  const body = await response.json();
+
+  if (!response.ok) {
+    throw new Error(
+      typeof body?.error === "string"
+        ? body.error
+        : "Unable to update Worker autonomy.",
+    );
+  }
+
+  return body as { work: BillbliWork };
+}
+
 export async function submitWorkProposal(input: {
   title: string;
   goal: string;
@@ -360,6 +397,42 @@ export default function WorkerWorkspace({
   const [state, setState] = useState<AskWorkerState>(
     createAskWorkerState(),
   );
+  const [autonomy, setAutonomy] = useState<BillbliWork["autonomy"]>(
+    worker.autonomy,
+  );
+  const [authorization, setAuthorization] = useState<
+    BillbliWork["authorization"]
+  >(worker.authorization);
+  const [autonomySaving, setAutonomySaving] = useState(false);
+
+  async function handleAutonomyChange(
+    nextAutonomy: BillbliWork["autonomy"],
+  ) {
+    if (autonomySaving || nextAutonomy === autonomy) {
+      return;
+    }
+
+    const previousAutonomy = autonomy;
+    const previousAuthorization = authorization;
+    setAutonomy(nextAutonomy);
+    setAutonomySaving(true);
+
+    try {
+      const result = await submitWorkAutonomyUpdate({
+        workerId: worker.id,
+        autonomy: nextAutonomy,
+      });
+
+      setAutonomy(result.work.autonomy);
+      setAuthorization(result.work.authorization);
+    } catch {
+      setAutonomy(previousAutonomy);
+      setAuthorization(previousAuthorization);
+    } finally {
+      setAutonomySaving(false);
+    }
+  }
+
 
   async function handleSubmit() {
     if (state.status === "loading") {
@@ -424,14 +497,31 @@ export default function WorkerWorkspace({
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-2 text-xs font-medium">
-            <span className="rounded-full bg-zinc-100 px-3 py-1 text-zinc-700">
-              {formatLabel(worker.autonomy)}
-            </span>
-            <span className="rounded-full bg-zinc-100 px-3 py-1 text-zinc-700">
-              {formatLabel(worker.authorization)}
-            </span>
-          </div>
+            <div className="flex flex-wrap items-center gap-2 text-xs font-medium">
+              <label className="sr-only" htmlFor="worker-autonomy">
+                Worker autonomy
+              </label>
+              <select
+                id="worker-autonomy"
+                aria-label="Worker autonomy"
+                value={autonomy}
+                disabled={autonomySaving}
+                onChange={(event) =>
+                  void handleAutonomyChange(
+                    event.target.value as BillbliWork["autonomy"],
+                  )
+                }
+                className="rounded-full border border-zinc-200 bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700 outline-none focus:border-emerald-500 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <option value="auto">Auto</option>
+                <option value="review">Review</option>
+                <option value="approval">Approval</option>
+                <option value="restricted">Restricted</option>
+              </select>
+              <span className="rounded-full bg-zinc-100 px-3 py-1 text-zinc-700">
+                {formatLabel(authorization)}
+              </span>
+            </div>
         </div>
 
         <div className="mt-5 border-t border-zinc-100 pt-5">

@@ -100,6 +100,58 @@ export function createWorkRepository(
       return toWork(data as WorkRow);
     },
 
+    async updateWork(
+      id: string,
+      updates: Partial<Pick<BillbliWork, "autonomy" | "authorization">>,
+    ): Promise<BillbliWork> {
+      const supabase = await getSupabase();
+      const userId = await getUserId();
+
+      const nextUpdates: Record<string, unknown> = {};
+
+      if (updates.autonomy !== undefined) {
+        nextUpdates.autonomy_level = updates.autonomy;
+        nextUpdates.authorization =
+          updates.autonomy === "approval" || updates.autonomy === "restricted"
+            ? "required"
+            : "not_required";
+      }
+
+      if (updates.authorization !== undefined && updates.autonomy === undefined) {
+        nextUpdates.authorization = updates.authorization;
+      }
+
+      if (Object.keys(nextUpdates).length === 0) {
+        const current = await this.getWork(id);
+
+        if (!current) {
+          throw new Error("Work not found");
+        }
+
+        return current;
+      }
+
+      nextUpdates.updated_at = new Date().toISOString();
+
+      const { data, error } = await supabase
+        .from("works")
+        .update(nextUpdates)
+        .eq("id", id)
+        .eq("user_id", userId)
+        .select()
+        .single();
+
+      if (error) {
+        if (error.message === "Work not found") {
+          throw new Error("Work not found");
+        }
+
+        throw new Error(`Failed to update Work: ${error.message}`);
+      }
+
+      return toWork(data as WorkRow);
+    },
+
     async listWorks(): Promise<BillbliWork[]> {
       const supabase = await getSupabase();
       const userId = await getUserId();

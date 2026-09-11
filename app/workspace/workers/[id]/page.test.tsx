@@ -14,6 +14,7 @@ vi.mock("next/navigation", () => ({
   notFound: vi.fn(() => {
     throw new Error("NEXT_NOT_FOUND");
   }),
+  usePathname: vi.fn(() => "/workspace/workers/worker-1"),
 }));
 
 vi.mock("@/lib/supabase/auth", () => ({

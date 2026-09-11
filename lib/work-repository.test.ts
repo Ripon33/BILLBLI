@@ -26,6 +26,47 @@ function createFakeSupabase() {
         };
       },
 
+      update(updates: Record<string, unknown>) {
+        return {
+          eq(column: string, value: string) {
+            const matchingRows = [...rows.values()].filter(
+              (row) => row[column] === value,
+            );
+
+            return {
+              eq(nextColumn: string, nextValue: string) {
+                const ownerRows = matchingRows.filter(
+                  (row) => row[nextColumn] === nextValue,
+                );
+
+                return {
+                  select() {
+                    return {
+                      single: async () => {
+                        const row = ownerRows[0];
+
+                        if (!row) {
+                          return {
+                            data: null,
+                            error: { message: "Work not found" },
+                          };
+                        }
+
+                        Object.assign(row, updates);
+                        return {
+                          data: row,
+                          error: null,
+                        };
+                      },
+                    };
+                  },
+                };
+              },
+            };
+          },
+        };
+      },
+
       select() {
         return {
           eq(column: string, value: string) {
@@ -220,6 +261,35 @@ describe("Work Engine repository", () => {
     expect(loaded?.authorization).toBe("required");
   });
 
+
+  it("updates Work autonomy through the authenticated owner scope", async () => {
+    const work = createWork({
+      title: "Autonomy test",
+      goal: "Verify owner-scoped autonomy updates",
+      autonomy: "review",
+    });
+
+    const supabase = createFakeSupabase();
+
+    const repository = createWorkRepository({
+      supabase,
+      getAuthenticatedUserId: async () => "user-123",
+    });
+
+    await repository.createWork(work);
+
+    const updated = await repository.updateWork(work.id, {
+      autonomy: "approval",
+    });
+
+    expect(updated.autonomy).toBe("approval");
+    expect(updated.authorization).toBe("required");
+
+    const loaded = await repository.getWork(work.id);
+
+    expect(loaded?.autonomy).toBe("approval");
+    expect(loaded?.authorization).toBe("required");
+  });
 
   it("lists only Work records owned by the authenticated user", async () => {
     const firstWork = createWork({
