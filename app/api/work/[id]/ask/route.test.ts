@@ -9,6 +9,15 @@ vi.mock("@/lib/research-runner", () => ({
   runResearch,
 }));
 
+const { generateAskWorkerWithAI } = vi.hoisted(() => ({
+  generateAskWorkerWithAI: vi.fn().mockResolvedValue(
+    "I recommend reviewing the available evidence before taking action.",
+  ),
+}));
+
+vi.mock("@/lib/ask-worker-ai", () => ({
+  generateAskWorkerWithAI,
+}));
 
 const getAuthenticatedUserId = vi.fn();
 const getWork = vi.fn();

@@ -24,6 +24,7 @@ export type AskWorkerSubmission = {
 export type AskWorkerSubmissionResult = {
   route: "study" | "research" | "task";
   stages: string[];
+  answer: string;
   context: {
     workerId: string;
     workerName: string;
@@ -519,6 +520,15 @@ export default function WorkerWorkspace({
               <span className="w-fit rounded-full bg-white px-3 py-1 text-xs font-medium text-zinc-600">
                 Governed
               </span>
+            </div>
+
+            <div className="mt-5 border-t border-zinc-200 pt-5">
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-zinc-400">
+                Answer
+              </p>
+              <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-zinc-800">
+                {state.result.answer}
+              </p>
             </div>
 
             {state.result.research && (

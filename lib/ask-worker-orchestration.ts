@@ -10,6 +10,7 @@ import {
   type ResearchRunnerDependencies,
   type ResearchRunnerResult,
 } from "./research-runner";
+import { generateAskWorkerWithAI } from "./ask-worker-ai";
 
 export type AskWorkerOrchestrationContext = Pick<
   AskWorkerRequest,
@@ -25,6 +26,7 @@ export type AskWorkerGovernance = {
 export type AskWorkerOrchestrationResult = {
   route: AskWorkerRoute;
   stages: string[];
+  answer: string;
   context: AskWorkerOrchestrationContext;
   governance: AskWorkerGovernance;
   research?: ResearchRunnerResult;
@@ -64,9 +66,18 @@ export async function orchestrateAskWorker(
       ? await runResearch(request.message, dependencies.research)
       : undefined;
 
+  const answer = await generateAskWorkerWithAI({
+    workerName: request.workerName,
+    workerType: request.workerType,
+    workerGoal: request.workerGoal,
+    message: request.message,
+    route,
+  });
+
   return {
     route,
     stages: stagesForRoute(route),
+    answer,
     ...(research !== undefined ? { research } : {}),
     context: {
       workerId: request.workerId,

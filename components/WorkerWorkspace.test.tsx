@@ -168,6 +168,7 @@ describe("WorkerWorkspace Ask Worker interaction", () => {
     const result: AskWorkerSubmissionResult = {
       route: "research",
       stages: ["research", "synthesis"],
+      answer: "I recommend reviewing the campaign evidence before taking action.",
       context: {
         workerId: "worker-1",
         workerName: "Maya",
@@ -507,6 +508,7 @@ describe("WorkerWorkspace Ask Worker interaction", () => {
     const state = createAskWorkerState({
       route: "research",
       stages: ["understanding", "routing", "research", "synthesis"],
+      answer: "I recommend validating the strongest campaign before committing budget.",
       context: {
         workerId: "worker-1",
         workerName: "Maya",
@@ -522,6 +524,9 @@ describe("WorkerWorkspace Ask Worker interaction", () => {
 
     expect(state.status).toBe("success");
     expect(state.result?.route).toBe("research");
+    expect(state.result?.answer).toBe(
+      "I recommend validating the strongest campaign before committing budget.",
+    );
     expect(state.result?.governance.recommendationIsAuthorization).toBe(false);
     expect(state.result?.governance.externalExecutionAllowed).toBe(false);
   });

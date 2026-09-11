@@ -4,6 +4,16 @@ import {
   type AskWorkerOrchestrationResult,
 } from "./ask-worker-orchestration";
 
+const generateWorkerAnswer = vi.fn().mockResolvedValue({
+  text: "I recommend validating the strongest campaign before committing budget.",
+});
+
+vi.mock("./ai/openai-provider", () => ({
+  OpenAIProvider: class {
+    generate = generateWorkerAnswer;
+  },
+}));
+
 const researchDependencies = {
   search: vi.fn().mockResolvedValue([
     {
@@ -31,6 +41,26 @@ const researchDependencies = {
 };
 
 describe("governed Ask Worker orchestration", () => {
+  it("generates a worker-facing AI answer without granting authorization", async () => {
+    const result = await orchestrateAskWorker({
+      workerId: "worker-1",
+      workerName: "Maya",
+      workerType: "digital_marketer",
+      workerGoal: "Grow qualified leads",
+      message: "Send this report to the marketing team.",
+    });
+
+    expect(result.answer).toBe(
+      "I recommend validating the strongest campaign before committing budget.",
+    );
+    expect(generateWorkerAnswer).toHaveBeenCalled();
+    expect(result.governance).toEqual({
+      recommendationIsAuthorization: false,
+      requiresHumanAuthorization: false,
+      externalExecutionAllowed: false,
+    });
+  });
+
   it("routes a worker request through the existing BILLBLI route", async () => {
     const result = await orchestrateAskWorker({
       workerId: "worker-1",
