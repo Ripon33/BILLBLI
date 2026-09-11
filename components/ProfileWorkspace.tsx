@@ -52,6 +52,7 @@ export function readProfileUpdateResponse(response: {
     id: string;
     email: string;
     fullName: string;
+    avatarPath?: string;
   };
 }) {
   return response.profile;
@@ -233,7 +234,7 @@ export default function ProfileWorkspace({
       setFullName(updatedProfile.fullName);
       setEditing(false);
       setSelectedPhoto(null);
-      setPhotoPreview(null);
+      setPhotoPreviewUrl(null);
       setMessage("Profile updated successfully.");
     } catch (saveError) {
       setError(
