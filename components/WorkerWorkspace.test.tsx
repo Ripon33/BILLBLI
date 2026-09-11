@@ -173,6 +173,39 @@ describe("WorkerWorkspace Ask Worker interaction", () => {
     ).toThrow("Ask Worker message is required.");
   });
 
+  it("includes uploaded attachment metadata in the Ask Worker request", () => {
+    const result = createAskWorkerSubmission({
+      workerId: "worker-1",
+      message: "Review this report.",
+      attachments: [
+        {
+          id: "attachment-1",
+          name: "report.pdf",
+          type: "application/pdf",
+          size: 1024,
+          storagePath: "user-1/chat/attachment-1.pdf",
+        },
+      ],
+    });
+
+    expect(result.init.body).toBe(
+      JSON.stringify({
+        message: "Review this report.",
+        attachments: [
+          {
+            id: "attachment-1",
+            name: "report.pdf",
+            type: "application/pdf",
+            size: 1024,
+            storagePath: "user-1/chat/attachment-1.pdf",
+          },
+        ],
+      }),
+    );
+
+    expect(result.init.body).not.toContain("File");
+  });
+
   it("does not create Work when submitting an Ask Worker request", () => {
     const result = createAskWorkerSubmission({
       workerId: "worker-1",

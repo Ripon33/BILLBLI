@@ -50,6 +50,43 @@ describe("profile API", () => {
     });
   });
 
+    it("passes and returns an avatar path when updating a profile photo", async () => {
+      updateCurrentProfile.mockResolvedValue({
+        id: "user-1",
+        email: "user@example.com",
+        fullName: "Updated User",
+        avatarPath: "user-1/profile/avatar-123.png",
+      });
+
+      const response = await PATCH(
+        new Request("http://localhost/api/profile", {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            fullName: "Updated User",
+            avatarPath: "user-1/profile/avatar-123.png",
+          }),
+        }),
+      );
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toEqual({
+        profile: {
+          id: "user-1",
+          email: "user@example.com",
+          fullName: "Updated User",
+          avatarPath: "user-1/profile/avatar-123.png",
+        },
+      });
+
+      expect(updateCurrentProfile).toHaveBeenCalledWith({
+        fullName: "Updated User",
+        avatarPath: "user-1/profile/avatar-123.png",
+      });
+    });
+
   it("returns 401 when there is no authenticated user", async () => {
     updateCurrentProfile.mockRejectedValue(
       new Error("Authenticated user is required"),

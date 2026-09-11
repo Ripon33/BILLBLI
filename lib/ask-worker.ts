@@ -1,6 +1,7 @@
 import { classifyIntent } from "./intent-engine";
 import { getAnswerRoute } from "./answer-routing";
 import type { WorkerType } from "./worker-domain";
+import type { ChatAttachment } from "./chat-attachment";
 
 export type AskWorkerRoute = "study" | "research" | "task";
 
@@ -10,6 +11,7 @@ export type AskWorkerRequest = {
   workerType?: WorkerType;
   workerGoal: string;
   message: string;
+  attachments?: ChatAttachment[];
   workProposal?: AskWorkerWorkProposal;
 };
 
@@ -26,6 +28,7 @@ export function buildAskWorkerRequest(input: {
   workerType?: WorkerType;
   workerGoal: string;
   message: string;
+  attachments?: ChatAttachment[];
   workProposal?: AskWorkerWorkProposal;
 }): AskWorkerRequest {
   const message = input.message.trim();
@@ -40,6 +43,9 @@ export function buildAskWorkerRequest(input: {
     workerType: input.workerType,
     workerGoal: input.workerGoal,
     message,
+    ...(input.attachments && input.attachments.length > 0
+      ? { attachments: input.attachments }
+      : {}),
     ...(input.workProposal !== undefined
       ? { workProposal: input.workProposal }
       : {}),

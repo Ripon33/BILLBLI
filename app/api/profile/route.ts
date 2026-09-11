@@ -7,6 +7,9 @@ export async function PATCH(request: Request) {
 
     const profile = await updateCurrentProfile({
       fullName: typeof body.fullName === "string" ? body.fullName : "",
+      ...(typeof body.avatarPath === "string"
+        ? { avatarPath: body.avatarPath }
+        : {}),
     });
 
     return NextResponse.json({ profile });

@@ -5,6 +5,7 @@ import type { BillbliWork } from "@/lib/work-engine";
 import type { ResearchRunnerResult } from "@/lib/research-runner";
 import type { AskWorkerWorkProposal } from "@/lib/ask-worker";
 import { WORKER_PROFILES } from "@/lib/worker-domain";
+import type { ChatAttachment } from "@/lib/chat-attachment";
 
 type WorkerWorkspaceProps = {
   worker: BillbliWork;
@@ -43,6 +44,7 @@ export type AskWorkerSubmissionResult = {
 export function createAskWorkerSubmission(input: {
   workerId: string;
   message: string;
+  attachments?: ChatAttachment[];
 }): AskWorkerSubmission {
   const message = input.message.trim();
 
@@ -57,7 +59,12 @@ export function createAskWorkerSubmission(input: {
       headers: {
         "content-type": "application/json",
       },
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({
+        message,
+        ...(input.attachments && input.attachments.length > 0
+          ? { attachments: input.attachments }
+          : {}),
+      }),
     },
   };
 }

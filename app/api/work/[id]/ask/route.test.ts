@@ -190,4 +190,47 @@ describe("POST /api/work/[id]/ask", () => {
 
     expect(response.status).toBe(400);
   });
+
+  it("rejects a chat attachment path owned by another user", async () => {
+    getAuthenticatedUserId.mockResolvedValue("user-1");
+    getWork.mockResolvedValue({
+      id: "worker-1",
+      title: "Maya",
+      goal: "Grow qualified leads",
+      status: "draft",
+      priority: "normal",
+      autonomy: "auto",
+      authorization: "not_required",
+      workerType: "digital_marketer",
+      workerName: "Maya",
+      createdAt: "2026-09-09T00:00:00.000Z",
+      updatedAt: "2026-09-09T00:00:00.000Z",
+    });
+
+    const response = await POST(
+      new Request("http://localhost/api/work/worker-1/ask", {
+        method: "POST",
+        body: JSON.stringify({
+          message: "Review this report.",
+          attachments: [
+            {
+              id: "attachment-1",
+              name: "report.pdf",
+              type: "application/pdf",
+              size: 1024,
+              storagePath: "user-2/chat/attachment-1.pdf",
+            },
+          ],
+        }),
+        headers: { "content-type": "application/json" },
+      }),
+      { params: Promise.resolve({ id: "worker-1" }) },
+    );
+
+    expect(response.status).toBe(400);
+
+    const data = await response.json();
+    expect(data.error).toBe("Invalid chat attachment storage path.");
+  });
+
 });

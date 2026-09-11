@@ -24,6 +24,56 @@ describe("ask-worker contracts", () => {
     });
   });
 
+  it("preserves chat attachment metadata in the Ask Worker request", () => {
+    const request = buildAskWorkerRequest({
+      workerId: "worker-1",
+      workerName: "Maya",
+      workerType: "digital_marketer",
+      workerGoal: "Grow qualified leads",
+      message: "Review this report.",
+      attachments: [
+        {
+          id: "attachment-1",
+          name: "report.pdf",
+          type: "application/pdf",
+          size: 1024,
+          storagePath: "user-1/chat/attachment-1.pdf",
+        },
+      ],
+    });
+
+    expect(request.attachments).toEqual([
+      {
+        id: "attachment-1",
+        name: "report.pdf",
+        type: "application/pdf",
+        size: 1024,
+        storagePath: "user-1/chat/attachment-1.pdf",
+      },
+    ]);
+  });
+
+  it("does not allow a browser File object in the Ask Worker attachment contract", () => {
+    const request = buildAskWorkerRequest({
+      workerId: "worker-1",
+      workerName: "Maya",
+      workerGoal: "Grow qualified leads",
+      message: "Review this report.",
+      attachments: [
+        {
+          id: "attachment-1",
+          name: "report.pdf",
+          type: "application/pdf",
+          size: 1024,
+          storagePath: "user-1/chat/attachment-1.pdf",
+        },
+      ],
+    });
+
+    expect(request.attachments?.[0]).not.toHaveProperty("file");
+    expect(request.attachments?.[0]).not.toHaveProperty("content");
+  });
+
   it("uses the existing BILLBLI answer routing semantics", () => {
     const cases: Array<[string, AskWorkerRoute]> = [
       ["Explain how market segmentation works", "study"],

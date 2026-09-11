@@ -16,6 +16,7 @@ type GetUserFunction = () => Promise<{
 type UpdateUserFunction = (attributes: {
   data: {
     full_name: string;
+    avatar_path?: string;
   };
 }) => Promise<{
   data: {
@@ -26,12 +27,14 @@ type UpdateUserFunction = (attributes: {
 
 type UpdateCurrentProfileInput = {
   fullName: string;
+  avatarPath?: string;
   getUser?: GetUserFunction;
   updateUser?: UpdateUserFunction;
 };
 
 export async function updateCurrentProfile({
   fullName,
+  avatarPath,
   getUser,
   updateUser,
 }: UpdateCurrentProfileInput) {
@@ -61,10 +64,30 @@ export async function updateCurrentProfile({
     throw new Error("Authenticated user is required");
   }
 
+    if (avatarPath !== undefined) {
+      const parts = avatarPath.split("/");
+
+      const isValidAvatarPath =
+        parts.length === 3 &&
+        parts[0] === user.id &&
+        parts[1] === "profile" &&
+        /^[A-Za-z0-9-]+\.(jpg|jpeg|png|webp)$/i.test(parts[2]);
+
+      if (!isValidAvatarPath) {
+        throw new Error("Invalid avatar path.");
+      }
+    }
+
+  const metadata: { full_name: string; avatar_path?: string } = {
+    full_name: normalizedFullName,
+  };
+
+  if (avatarPath !== undefined) {
+    metadata.avatar_path = avatarPath;
+  }
+
   const { data, error } = await authenticatedUpdateUser({
-    data: {
-      full_name: normalizedFullName,
-    },
+    data: metadata,
   });
 
   if (error) {
@@ -82,5 +105,8 @@ export async function updateCurrentProfile({
       typeof data.user.user_metadata?.full_name === "string"
         ? data.user.user_metadata.full_name
         : normalizedFullName,
+    ...(typeof data.user.user_metadata?.avatar_path === "string"
+      ? { avatarPath: data.user.user_metadata.avatar_path }
+      : {}),
   };
 }

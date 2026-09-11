@@ -12,5 +12,24 @@ export default defineConfig({
   test: {
     environment: "node",
     exclude: ["**/node_modules/**", "**/.worktrees/**", "**/.next/**"],
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: "node",
+          environment: "node",
+          include: ["**/*.test.ts"],
+        },
+      },
+      {
+        extends: true,
+        test: {
+          name: "dom",
+          environment: "jsdom",
+          include: ["**/*.test.tsx"],
+          setupFiles: ["./vitest.setup.ts"],
+        },
+      },
+    ],
   },
 });

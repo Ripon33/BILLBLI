@@ -1,6 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { ChangeEvent, useEffect, useState } from "react";
+import { validateProfilePhoto } from "@/lib/profile-photo";
+import { uploadProfilePhoto } from "@/lib/profile-photo-upload";
+import { getProfilePhotoUrl } from "@/lib/profile-photo-url";
+import { createClient } from "@/lib/supabase/client";
 
 type ProfileUser = {
   id: string;
@@ -12,6 +16,7 @@ export type ProfileViewModel = {
   userId: string;
   email: string;
   fullName: string;
+  avatarPath?: string;
 };
 
 export function normalizeProfileName(fullName: string): string {
@@ -24,7 +29,10 @@ export function normalizeProfileName(fullName: string): string {
   return normalized;
 }
 
-export function buildProfileUpdateRequest(fullName: string): RequestInit {
+export function buildProfileUpdateRequest(
+  fullName: string,
+  avatarPath?: string,
+): RequestInit {
   const normalized = normalizeProfileName(fullName);
 
   return {
@@ -34,6 +42,7 @@ export function buildProfileUpdateRequest(fullName: string): RequestInit {
     },
     body: JSON.stringify({
       fullName: normalized,
+      ...(avatarPath !== undefined ? { avatarPath } : {}),
     }),
   };
 }
@@ -55,10 +64,17 @@ export function createProfileViewModel(user: ProfileUser): ProfileViewModel {
       ? user.user_metadata.full_name.trim()
       : "BILLBLI User";
 
+  const avatarPath =
+    typeof user.user_metadata?.avatar_path === "string" &&
+    user.user_metadata.avatar_path.trim()
+      ? user.user_metadata.avatar_path.trim()
+      : undefined;
+
   return {
     userId: user.id,
     email: user.email ?? "",
     fullName,
+    avatarPath,
   };
 }
 
@@ -72,12 +88,91 @@ export default function ProfileWorkspace({
   const [profile, setProfile] = useState(initialProfile);
   const [editing, setEditing] = useState(false);
   const [fullName, setFullName] = useState(initialProfile.fullName);
+  const [selectedPhoto, setSelectedPhoto] = useState<File | null>(null);
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(null);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadAvatar() {
+      if (!profile.avatarPath) {
+        setAvatarUrl(null);
+        return;
+      }
+
+      try {
+        const supabase = createClient();
+        const signedUrl = await getProfilePhotoUrl({
+          supabase,
+          avatarPath: profile.avatarPath,
+        });
+
+        if (!cancelled) {
+          setAvatarUrl(signedUrl);
+        }
+      } catch {
+        if (!cancelled) {
+          setAvatarUrl(null);
+        }
+      }
+    }
+
+    void loadAvatar();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [profile.avatarPath]);
+
+  useEffect(() => {
+    if (!selectedPhoto) {
+      setPhotoPreviewUrl(null);
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(selectedPhoto);
+    setPhotoPreviewUrl(previewUrl);
+
+    return () => {
+      URL.revokeObjectURL(previewUrl);
+    };
+  }, [selectedPhoto]);
+
+  function handlePhotoChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.currentTarget.files?.[0] ?? null;
+
+    setError(null);
+
+    if (!file) {
+      setSelectedPhoto(null);
+      return;
+    }
+
+    try {
+      validateProfilePhoto({
+        name: file.name,
+        type: file.type,
+        size: file.size,
+      });
+      setSelectedPhoto(file);
+    } catch (photoError) {
+      setSelectedPhoto(null);
+      setError(
+        photoError instanceof Error
+          ? photoError.message
+          : "Please select a valid profile photo.",
+      );
+      event.currentTarget.value = "";
+    }
+  }
+
   function startEditing() {
     setFullName(profile.fullName);
+    setSelectedPhoto(null);
     setMessage(null);
     setError(null);
     setEditing(true);
@@ -93,23 +188,26 @@ export default function ProfileWorkspace({
   async function saveProfile() {
     setMessage(null);
     setError(null);
-
-    let request: RequestInit;
-
-    try {
-      request = buildProfileUpdateRequest(fullName);
-    } catch (saveError) {
-      setError(
-        saveError instanceof Error
-          ? saveError.message
-          : "Please enter a valid full name.",
-      );
-      return;
-    }
-
     setSaving(true);
 
     try {
+      let avatarPath: string | undefined;
+
+      if (selectedPhoto) {
+        const supabase = createClient();
+
+        const uploadedPhoto = await uploadProfilePhoto({
+          supabase,
+          userId: profile.userId,
+          file: selectedPhoto,
+          fileId: crypto.randomUUID(),
+        });
+
+        avatarPath = uploadedPhoto.path;
+      }
+
+      const request = buildProfileUpdateRequest(fullName, avatarPath);
+
       const response = await fetch("/api/profile", request);
       const body = await response.json();
 
@@ -127,9 +225,15 @@ export default function ProfileWorkspace({
         userId: updatedProfile.id,
         email: updatedProfile.email,
         fullName: updatedProfile.fullName,
+        ...(updatedProfile.avatarPath
+          ? { avatarPath: updatedProfile.avatarPath }
+          : {}),
       });
+
       setFullName(updatedProfile.fullName);
       setEditing(false);
+      setSelectedPhoto(null);
+      setPhotoPreview(null);
       setMessage("Profile updated successfully.");
     } catch (saveError) {
       setError(
@@ -147,11 +251,16 @@ export default function ProfileWorkspace({
       <section className="rounded-2xl border border-zinc-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
-            <div
-              aria-hidden="true"
-              className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-lg font-semibold text-zinc-700"
-            >
-              {profile.fullName.charAt(0).toUpperCase()}
+            <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-zinc-100 text-lg font-semibold text-zinc-700">
+              {avatarUrl ? (
+                <img
+                  src={avatarUrl}
+                  alt="Profile photo"
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                profile.fullName.charAt(0).toUpperCase()
+              )}
             </div>
 
             <div className="min-w-0">
@@ -190,6 +299,32 @@ export default function ProfileWorkspace({
 
         {editing ? (
           <div className="mt-6 space-y-5">
+            <div>
+              <label
+                htmlFor="profile-photo"
+                className="text-sm font-medium text-zinc-800"
+              >
+                Profile photo
+              </label>
+
+              <input
+                id="profile-photo"
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                disabled={saving}
+                onChange={handlePhotoChange}
+                className="mt-2 block w-full text-sm text-zinc-700"
+              />
+
+              {photoPreviewUrl && (
+                <img
+                  src={photoPreviewUrl}
+                  alt="Profile preview"
+                  className="mt-3 h-20 w-20 rounded-full object-cover"
+                />
+              )}
+            </div>
+
             <div>
               <label
                 htmlFor="profile-full-name"
