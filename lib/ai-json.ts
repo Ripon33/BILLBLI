@@ -1,76 +1,45 @@
 import { GoogleGenAI } from "@google/genai";
+import { OpenAIProvider } from "./ai/openai-provider";
+
+function normalizeJsonText(raw: string): string {
+  let text = raw.trim();
+
+  if (text.startsWith("```")) {
+    text = text
+      .replace(/^```(?:json)?\s*/i, "")
+      .replace(/\s*```$/i, "")
+      .trim();
+  }
+
+  return text;
+}
 
 export async function generateJsonWithAI(prompt: string): Promise<string> {
   const openaiKey = process.env.OPENAI_API_KEY;
   const geminiKey = process.env.GEMINI_API_KEY;
 
-  let raw = "";
-
   if (openaiKey) {
     try {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 120000);
+      const provider = new OpenAIProvider();
 
-      try {
-        const response = await fetch("https://api.openai.com/v1/responses", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${openaiKey}`,
-          },
-          body: JSON.stringify({
-            model: "gpt-5.6-luna",
-            reasoning: {
-              effort: "low",
-            },
-            input: prompt,
-            store: false,
-          }),
-          signal: controller.signal,
-        });
+      const result = await provider.generate({
+        capability: "structured_json",
+        mode: "balanced",
+        input: prompt,
+      });
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(
-            `OpenAI HTTP ${response.status}: ${errorText.slice(0, 500)}`
-          );
-        }
-
-        const data = await response.json();
-
-        raw =
-          data.output_text ||
-          data.output
-            ?.flatMap((item: any) => item.content || [])
-            ?.filter(
-              (item: any) =>
-                item.type === "output_text" ||
-                typeof item.text === "string"
-            )
-            ?.map((item: any) => item.text || "")
-            ?.join("") ||
-          "";
-      } finally {
-        clearTimeout(timeout);
-      }
-
-      raw = raw.trim();
-
-      if (raw.startsWith("```")) {
-        raw = raw
-          .replace(/^```(?:json)?\s*/i, "")
-          .replace(/\s*```$/i, "")
-          .trim();
+      if (result.text.trim()) {
+        return normalizeJsonText(result.text);
       }
     } catch (error) {
       console.error(
         "OpenAI primary failed; using Gemini fallback:",
-        error
+        error,
       );
     }
   }
 
-  if (!raw && geminiKey) {
+  if (geminiKey) {
     const ai = new GoogleGenAI({ apiKey: geminiKey });
 
     const geminiModels = [
@@ -92,17 +61,14 @@ export async function generateJsonWithAI(prompt: string): Promise<string> {
               responseMimeType: "application/json",
             },
           });
-
           break;
         } catch (error) {
           lastGeminiError = error;
-
           const message =
             error instanceof Error ? error.message : String(error);
-
           const retryable =
             /503|UNAVAILABLE|high demand|429|RESOURCE_EXHAUSTED|500|502|504/i.test(
-              message
+              message,
             );
 
           if (!retryable || attempt === 1) {
@@ -110,7 +76,7 @@ export async function generateJsonWithAI(prompt: string): Promise<string> {
           }
 
           await new Promise((resolve) =>
-            setTimeout(resolve, 800 * 2 ** attempt)
+            setTimeout(resolve, 800 * 2 ** attempt),
           );
         }
       }
@@ -124,16 +90,18 @@ export async function generateJsonWithAI(prompt: string): Promise<string> {
       throw new Error(
         lastGeminiError instanceof Error
           ? lastGeminiError.message
-          : "The AI reasoning service is temporarily unavailable."
+          : "The AI reasoning service is temporarily unavailable.",
       );
     }
 
-    raw = response.text || "";
+    const raw = response.text || "";
+
+    if (!raw) {
+      throw new Error("No AI response was generated.");
+    }
+
+    return normalizeJsonText(raw);
   }
 
-  if (!raw) {
-    throw new Error("No AI response was generated.");
-  }
-
-  return raw.trim();
+  throw new Error("No AI response was generated.");
 }
