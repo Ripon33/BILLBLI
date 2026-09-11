@@ -18,7 +18,7 @@ import { buildDecisionRecommendation } from "./decision-recommendation";
 import { buildDecisionReassessment } from "./decision-reassessment";
 import { buildDecisionActionPlan } from "./decision-action-plan";
 import { buildUntrustedResearchContent } from "./untrusted-research-content";
-import { generateJsonWithAI } from "./ai-json";
+import { OpenAIProvider } from "./ai/openai-provider";
 import { withDecisionLanguage } from "./multilingual-decision";
 
 type TavilyResult = {
@@ -267,8 +267,21 @@ Return ONLY valid JSON with this exact structure:
 confidence must be an integer from 0 to 100.
 `;
 
-  const generate = dependencies.generate ?? generateJsonWithAI;
-  const raw = (await generate(prompt)).trim();
+  let raw: string;
+
+  if (dependencies.generate) {
+    raw = (await dependencies.generate(prompt)).trim();
+  } else {
+    const provider = new OpenAIProvider();
+
+    const result = await provider.generate({
+      capability: "research",
+      mode: "balanced",
+      input: prompt,
+    });
+
+    raw = result.text.trim();
+  }
 
   let analysis: ResearchRunnerResult["analysis"];
 

@@ -116,7 +116,7 @@ export async function POST(req: Request) {
     }
 
     const tavilyKey = process.env.TAVILY_API_KEY;
-    const geminiKey = process.env.GEMINI_API_KEY;
+    const openaiKey = process.env.OPENAI_API_KEY;
 
     if (!tavilyKey) {
       return NextResponse.json(
@@ -128,11 +128,11 @@ export async function POST(req: Request) {
       );
     }
 
-    if (!geminiKey) {
+    if (!openaiKey) {
       return NextResponse.json(
         {
-          error: "Gemini is not configured.",
-          missing: "GEMINI_API_KEY",
+          error: "AI reasoning service is not configured.",
+          missing: "OPENAI_API_KEY",
         },
         { status: 500 }
       );

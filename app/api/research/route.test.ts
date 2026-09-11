@@ -136,7 +136,7 @@ describe("POST /api/research security boundary", () => {
 
   it("delegates research requests to the shared research runner", async () => {
     vi.stubEnv("TAVILY_API_KEY", "test-tavily-key");
-    vi.stubEnv("GEMINI_API_KEY", "test-gemini-key");
+    vi.stubEnv("OPENAI_API_KEY", "test-openai-key");
 
 
     const request = new Request("http://localhost/api/research", {
