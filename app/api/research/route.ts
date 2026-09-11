@@ -1,11 +1,11 @@
 import { classifyIntent } from "@/lib/intent-engine";
 import { getAnswerRoute } from "@/lib/answer-routing";
 import { createStudyResponse } from "@/lib/study-response";
-import { buildStudyPrompt } from "@/lib/study-prompt";
 import { createResearchLanguageContext } from "@/lib/research-language";
 import { NextResponse } from "next/server";
 import { createRateLimiter } from "@/lib/rate-limit";
 import { runResearch } from "@/lib/research-runner";
+import { generateStudyWithAI } from "@/lib/study-ai";
 
 const researchRateLimiter = createRateLimiter({
   limit: 10,
@@ -56,24 +56,21 @@ export async function POST(req: Request) {
     }
 
     if (answerRoute === "study") {
-      const studyPrompt = buildStudyPrompt(
-        question,
-        languageContext.language.output,
-      );
-
-      if (!process.env.OPENAI_API_KEY && !process.env.GEMINI_API_KEY) {
+      if (!process.env.OPENAI_API_KEY) {
         return NextResponse.json(
           {
             error: "AI reasoning service is not configured.",
-            missing: "OPENAI_API_KEY or GEMINI_API_KEY",
+            missing: "OPENAI_API_KEY",
           },
           { status: 500 },
         );
       }
 
       try {
-        const { generateJsonWithAI } = await import("@/lib/ai-json");
-        const rawStudy = await generateJsonWithAI(studyPrompt);
+        const rawStudy = await generateStudyWithAI(
+          question,
+          languageContext.language.output,
+        );
 
         let parsedStudy: {
           explanation?: string;
