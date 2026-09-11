@@ -191,6 +191,34 @@ describe("POST /api/work/[id]/ask", () => {
     expect(response.status).toBe(400);
   });
 
+  it("rejects malformed chat attachments", async () => {
+    getAuthenticatedUserId.mockResolvedValue("user-1");
+    getWork.mockResolvedValue({
+      id: "worker-1",
+      title: "Research Worker",
+      workerName: "Research Worker",
+      workerType: "research",
+      goal: "Research the topic.",
+    });
+
+    const response = await POST(
+      new Request("http://localhost/api/work/worker-1/ask", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          message: "Review this.",
+          attachments: {},
+        }),
+      }),
+      { params: Promise.resolve({ id: "worker-1" }) },
+    );
+
+    expect(response.status).toBe(400);
+
+    const data = await response.json();
+    expect(data.error).toBe("Invalid chat attachments.");
+  });
+
   it("rejects a chat attachment path owned by another user", async () => {
     getAuthenticatedUserId.mockResolvedValue("user-1");
     getWork.mockResolvedValue({

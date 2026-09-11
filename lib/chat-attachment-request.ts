@@ -13,6 +13,10 @@ export function validateChatAttachmentRequest(input: {
     return [];
   }
 
+  if (!Array.isArray(input.attachments)) {
+    throw new Error("Invalid chat attachments.");
+  }
+
   if (input.attachments.length === 0) {
     throw new Error("Chat attachments cannot be empty.");
   }

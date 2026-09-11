@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import {
   buildAskWorkerRequest,
 } from "@/lib/ask-worker";
+import { validateChatAttachmentRequest } from "@/lib/chat-attachment-request";
 import { orchestrateAskWorker } from "@/lib/ask-worker-orchestration";
 import { createWorkRepository } from "@/lib/work-repository";
 
@@ -61,12 +62,23 @@ export async function POST(
   }
 
   try {
+    const rawAttachments =
+      "attachments" in body ? body.attachments : undefined;
+
+    const attachments = validateChatAttachmentRequest({
+      userId,
+      attachments: rawAttachments as Parameters<
+        typeof validateChatAttachmentRequest
+      >[0]["attachments"],
+    });
+
     const askRequest = buildAskWorkerRequest({
       workerId: worker.id,
       workerName: worker.workerName ?? worker.title,
       workerType: worker.workerType,
       workerGoal: worker.goal,
       message: body.message,
+      attachments,
     });
 
     const result = await orchestrateAskWorker(askRequest);
@@ -75,7 +87,13 @@ export async function POST(
   } catch (error) {
     if (
       error instanceof Error &&
-      error.message === "Ask Worker message is required."
+      (
+        error.message === "Ask Worker message is required." ||
+        error.message === "Invalid chat attachments." ||
+        error.message === "Invalid chat attachment storage path." ||
+        error.message === "Invalid chat attachment metadata." ||
+        error.message === "Chat attachments cannot be empty."
+      )
     ) {
       return NextResponse.json(
         { error: error.message },
